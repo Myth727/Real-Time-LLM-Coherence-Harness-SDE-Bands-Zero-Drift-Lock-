@@ -192,7 +192,7 @@ function randn(rng) {
 }
 
 // ── SDE ────────────────────────────────────────────────────────
-function simulateSDE(params,T,dt=0.02,nPaths=300,seed=42) {
+function simulateSDE(params,T,dt=0.02,nPaths=50,seed=42) {
   const {alpha,beta_p,omega,sigma,kappa}=params;
   const lam=1/(1+kappa),nSteps=Math.ceil(T/dt),rng=makeRng(seed),paths=[];
   for (let p=0;p<nPaths;p++) {
@@ -1452,7 +1452,7 @@ export default function HudsonPerryDriftV1() {
   const [corrections,     setCorrections]     = useState([]);
   // V1.5.0
   const [nPaths,          setNPaths]          = useState(50);
-  const [postAuditMode,   setPostAuditMode]   = useState("off");
+  const [postAuditMode,   setPostAuditMode]   = useState("off"); // default OFF — enable in TUNE → FEATURES when ready
   const [customMutePhrases,setCustomMutePhrases] = useState(null); // null = use defaults
   const [mutePhraseInput, setMutePhraseInput] = useState("");
   const [exportContent,   setExportContent]   = useState(null);
@@ -2568,6 +2568,14 @@ export default function HudsonPerryDriftV1() {
                 <div style={{fontSize:8,color:"#2A4060",marginTop:4,opacity:.5}}>
                   TAP 📎 TO ATTACH · CLICK CHART TO REWIND
                 </div>
+                <div style={{marginTop:12,padding:"8px 16px",background:"#0A1020",
+                  borderRadius:4,border:"1px solid #1EAAAA33",
+                  fontFamily:"Courier New, monospace",fontSize:8,color:"#1EAAAA",
+                  lineHeight:1.7,opacity:.8}}>
+                  NEW? Click <strong>GUIDE</strong> in the header to learn how to read the chart.<br/>
+                  Recommended: start with DEFAULT preset · post-audit OFF · 50 SDE paths.<br/>
+                  Enable advanced features in <strong>TUNE</strong> when ready.
+                </div>
                 <div style={{display:"flex",justifyContent:"center",gap:16,marginTop:14}}>
                   <a href="https://x.com/RaccoonStampede" target="_blank" rel="noreferrer"
                     style={{fontFamily:"Courier New, monospace",fontSize:9,color:"#4A9EFF",
@@ -3266,8 +3274,9 @@ export default function HudsonPerryDriftV1() {
                 style={{padding:"10px 24px",background:"#0A1400",
                   border:"2px solid #E8A030",borderRadius:4,color:"#E8A030",
                   cursor:"pointer",fontSize:10,fontFamily:"Courier New, monospace",
-                  letterSpacing:1,fontWeight:"bold",flexShrink:0,marginLeft:16}}>
-                I ACCEPT — ENTER
+                  letterSpacing:1,fontWeight:"bold",flexShrink:0,marginLeft:16}}
+                onClick={()=>{setShowDisclaimer(false);setShowGuide(true);}}>
+                I ACCEPT — READ THE GUIDE FIRST
               </button>
             </div>
           </div>
