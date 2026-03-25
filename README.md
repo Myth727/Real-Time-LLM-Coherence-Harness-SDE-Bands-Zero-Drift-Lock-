@@ -1,174 +1,284 @@
-# HPDL SDK
-## Hudson & Perry's Drift Law — AI Coherence Engine
+# Hudson & Perry's Drift Law — ARCHITECT V1.5.2
 
-**Version 1.5.1** · © 2026 Hudson & Perry Research  
-**Authors:** David Hudson ([@RaccoonStampede](https://x.com/RaccoonStampede)) & David Perry ([@Prosperous727](https://x.com/Prosperous727))  
-**License:** MIT  
+**A real-time mathematical control layer for AI conversation coherence.**
 
-> ⚠ RESEARCH & DEVELOPMENT — NOT FOR CLINICAL OR LEGAL USE.  
-> All outputs are mathematical proxy indicators. No warranty expressed or implied.
+[![License: MIT](https://img.shields.io/badge/License-MIT-teal.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-1.5.2-orange.svg)]()
+[![Status](https://img.shields.io/badge/status-R%26D-yellow.svg)]()
 
----
+> ⚠ **Research & Development** — All outputs are mathematical proxy indicators only.  
+> Not for clinical or legal use. No warranty expressed or implied.
 
-## What this is
-
-The mathematical engine extracted from the [ARCHITECT V1.5.1](https://github.com/hudson-perry/hpdl-sdk) artifact — the AI coherence harness built by Hudson & Perry. Every function used in the live tool is exposed here as a clean TypeScript package with zero UI dependencies.
-
-**What it implements:**
-- **SDE simulation** — Monte Carlo paths with LCG RNG (deterministic, reproducible)
-- **Kalman filter** — time-varying, κ-damped, with dual-observation mode
-- **GARCH(1,1) variance** — volatility clustering for AI response streams
-- **Coherence scoring** — TF-IDF + JSD + length/structure/persistence
-- **Signal detection** — 6 behavioral proxies + 3 hallucination proxies
-- **Drift Law** — ghost tax floor, cap_eff, escalation modes
-- **Pipe injection** — `u_drift(t)` — the control layer injected into system prompts
-- **RAG** — retrieve-augment from session history
-- **Session health** — 0–100 composite score
-- **Storage polyfill** — works in Claude artifact sandbox, browser, or Node
+**Authors:** David Perry ([@Myth727](https://github.com/Myth727) · [@Prosperous727](https://x.com/Prosperous727)) & David Hudson ([@RaccoonStampede](https://x.com/RaccoonStampede))  
+**© 2026 Hudson & Perry Research**
 
 ---
 
-## Install
+## What This Is
 
-```bash
-npm install hpdl-sdk
-```
+Every AI conversation drifts. Not sometimes — every time, given enough turns. The model has no persistent awareness of its own coherence across turns. It does not know it is drifting.
 
-Or clone and build:
-```bash
-git clone https://github.com/hudson-perry/hpdl-sdk
-cd hpdl-sdk
-npm install
-npm run build
-```
+The standard industry response is a post-processing filter — a second AI that reads the first AI's output after generation and classifies it. Reactive. Expensive. The mistake is already made.
+
+**ARCHITECT is a real-time mathematical control layer.** It monitors every response, scores it across five dimensions, tracks the trajectory using a Kalman filter, models variance with GARCH(1,1), detects behavioral and hallucination signals, and injects corrective directives into the system prompt before the next response is generated.
+
+Not a filter. A co-pilot.
+
+Runs entirely client-side. No backend. No server. No database. 17 distinct mathematical modeling components in a single browser file.
 
 ---
 
 ## Quick Start
 
-```typescript
-import {
-  computeCoherence,
-  kalmanStep,
-  updateSmoothedVariance,
-  assessBehavioralSignals,
-  buildPipeInjection,
-  computeSessionHealth,
-  SDE_PARAMS,
-  KAPPA,
-  EPSILON,
-} from 'hpdl-sdk';
+**Requirements:** An Anthropic API key. A browser.
 
-// Score a new AI response against conversation history
-const score = computeCoherence(responseText, messages);
+1. Download `ARCHITECT.jsx`
+2. Drop it into a React project (Vite recommended) with `recharts` installed
+3. Enter your API key in the UI
+4. Start chatting — the harness activates automatically
 
-// Update Kalman filter
-const t_k = turn * (2 * Math.PI / 12);
-const newKalman = kalmanStep(kalmanState, score, t_k, SDE_PARAMS);
-
-// Update variance
-const newVar = updateSmoothedVariance(scoreHistory, smoothedVar);
-
-// Detect behavioral signals
-const behavioral = assessBehavioralSignals(responseText, userText, messages);
-
-// Build pipe injection for next prompt
-const pipe = buildPipeInjection({
-  smoothedVar: newVar,
-  kalmanX: newKalman.x,
-  kalmanP: newKalman.P,
-  calmStreak, driftCount,
-  harnessMode: 'audit',
-  turn, hSignalCount: 0, bSignalCount: 0,
-});
-
-// Inject into your system prompt
-const systemPrompt = basePrompt + pipe;
+```bash
+npm create vite@latest my-app -- --template react
+cd my-app
+npm install recharts
+# replace src/App.jsx content with ARCHITECT.jsx content
+npm run dev
 ```
+
+Or use it directly as a Claude artifact — paste the JSX into the artifact editor and it runs immediately in the sandbox.
 
 ---
 
-## Core Constants
+## The Mathematics
 
-All constants are exposed. The Hudson Constants are the framework identity:
+### Coherence Score
 
-```typescript
-import { KAPPA, EPSILON, RESONANCE_ANCHOR, DAMPING } from 'hpdl-sdk';
+```
+C = 0.25 × TF-IDF
+  + 0.25 × (1 − JSD)
+  + 0.25 × length score
+  + 0.15 × structure score
+  + 0.10 × persistence score
+  × repetition penalty
 
-KAPPA            // 0.444  — Hudson Constant. Drives all damping.
-EPSILON          // 0.05   — Ghost tax floor. ~5% inefficiency.
-RESONANCE_ANCHOR // 623.81 — Hz. Zero-Drift Lock target.
-DAMPING          // 0.6925 — 1/(1+κ)
+Floor: 0.30 · Ceiling: 0.99
 ```
 
-> κ, ε, and RESONANCE_ANCHOR are exposed and changeable. They are the framework identity — modify them only if you understand what you are doing and acknowledge you are departing from the published framework.
+All weights are tunable in the MATH tab and wired directly into the live computation.
+
+**JSD (Jensen-Shannon Divergence)** is the most sensitive component. Symmetric, bounded [0,1], confirmed by Chuang et al. 2024 (DoLa) as the correct tool for semantic drift detection in LLMs.
+
+### Stochastic Differential Equation
+
+```
+dε(t) = a(t) ε(t) dt + b dW_t
+
+a(t) = (α + β_p · sin(ωt)) / (1 + κ)
+b    = σ / (1 + κ)
+```
+
+| Parameter | Value | Role |
+|-----------|-------|------|
+| κ | 0.444 | Hudson Constant — drives all damping. Never adapted. |
+| α | −0.25 | Mean-reversion. Negative guarantees stability. |
+| β_p | 0.18 | Periodic forcing amplitude. |
+| ω | 2π/12 | Forcing frequency (12-step period). |
+| σ | 0.10 | Base diffusion coefficient. |
+| DAMPING | 0.6925 | 1/(1+κ) |
+
+50 Monte Carlo paths simulated per session (tunable 5–1000). p10/p90 envelope forms the uncertainty band on the live chart. Score below lower band = statistically significant drift event.
+
+### Kalman Filter
+
+```
+F   = 1 + a(t_k)
+Q   = (KALMAN_SIGMA_P × λ)²
+x̂  = x_p + K × (obs − x_p)
+P   = (1 − K) × P_p
+K   = P_p / (P_p + KALMAN_R)
+λ   = 1/(1+κ) = 0.6925
+```
+
+The smoothed estimate x̂ is the primary drift detection signal. When post-audit is active, a dual-filter pass runs — post-audit score feeds back as a second Kalman observation in the same step.
+
+### GARCH(1,1) Variance
+
+```
+σ²_t = ω + α_g × ε²_{t-1} + β_g × σ²_{t-1}
+ω = 0.02 · α_g = 0.15 · β_g = 0.80
+```
+
+High β_g (0.80) means once variance rises it tends to stay elevated — matching observed AI behavior where one off-topic response tends to precede several more.
+
+### Drift Law
+
+```
+ΔS = cap_eff × (1 − exp(−n^α_s / τ)) + |β_C × sin(γ_h × n × 0.01)| × 0.05
+cap_eff = ε / (1 + γ_h)
+ε = 0.05  (ghost tax floor)
+```
+
+| Mode | γ_h | Behavior |
+|------|-----|----------|
+| AUDIT | 0.05 | Detection only |
+| MODERATE | 50 | Light correction |
+| DEEP CLEAN | 5,000 | Every claim traces to context |
+| EXTREME | 10,000 | One claim at a time |
+
+### The Hudson Constants
+
+**κ = 0.444** — The Hudson Constant. Applied to every damping calculation. Not a hyperparameter. The identity of the system.
+
+**ε = 0.05** — The ghost tax floor. ~5% irreducible inefficiency in complex systems. Appears independently in computational drift modeling and neuroscience literature (Lamm et al. 2011, fMRI). Cross-domain convergence — not a causal claim.
 
 ---
 
-## API Reference
+## Signal Detection
 
-### `computeCoherence(newContent, history, weights?, repThreshold?)`
-Scores a new response against conversation history.  
-Returns a score in **[0.30, 0.99]**.
+### Hallucination Signals (H-SIG) — 3 proxies
 
-```typescript
-const score = computeCoherence(
-  responseText,
-  messages,
-  { tfidf: 0.25, jsd: 0.25, length: 0.25, structure: 0.15, persistence: 0.10 },
-  0.65 // repetition penalty threshold
-);
-```
+| Proxy | Trigger |
+|-------|---------|
+| High-confidence language + elevated variance | 2+ certainty markers (definitely, proven, guaranteed, I can confirm...) with σ² > 0.120 |
+| Source inconsistency | TF-IDF match < 8% between response and attached documents |
+| Self-contradiction | Avg similarity < 15% vs 6 most related prior turns |
 
-### `kalmanStep(state, obs, t, params?, kalR?, kalSigP?)`
-Single Kalman filter update. Returns new `{ x, P }`.
+### Behavioral Signals (B-SIG) — 6 proxies
 
-### `kalmanDualStep(state, liveScore, postAuditScore, t, ...)`
-Dual-filter: two observations per turn (live + post-audit).
+Research basis: Sharma et al. ICLR 2024 (Anthropic) — sycophancy confirmed as systematic RLHF behavior.
 
-### `simulateSDE(params?, T?, dt?, nPaths?, seed?)`
-Monte Carlo SDE simulation. Returns `Float32Array[]` paths.
+| Proxy | Trigger |
+|-------|---------|
+| Roleplay drift | 1+ roleplay pattern match |
+| Sycophancy | 2+ flattery patterns |
+| Hype inflation | 2+ superlative patterns |
+| Question flooding | 4+ question marks |
+| Topic hijack | TF-IDF similarity < 5% between prompt and response |
+| Unsolicited elaboration | Unrequested content OR response > 2.5× session average length |
 
-### `updateSmoothedVariance(history, prev)`
-GARCH(1,1) blended with rolling window variance.
-
-### `assessBehavioralSignals(responseText, userText, history)`
-Returns `{ flagged, signals, questionCount, roleplays, sycophancies }`.
-
-### `assessHallucinationSignals(responseText, smoothedVar, sourceTexts, history)`
-Returns `{ flagged, signals, sourceScore, confidenceHits, contradiction }`.
-
-### `buildPipeInjection(state)`
-Returns the `[SYSTEM_INTERNAL — HUDSON & PERRY PIPE]` string for system prompt injection.
-
-### `computeSessionHealth(coherenceData, driftCount, smoothedVar, calmStreak, lock888, cfg?)`
-Returns **0–100** session health score.
-
-### `driftLawFloor(n, gamma_h)`
-Drift Law floor value at turn `n` under harness mode `gamma_h`.
-
-### `applyZeroDriftLock(cur, anchor?, maxIter?, ...)`
-Iterative convergence toward RESONANCE_ANCHOR.
-
-### `storage`
-Auto-detecting storage adapter. Works in Claude artifact sandbox (`window.storage`), browser (`localStorage`), or Node (in-memory).
+All signals are proxy indicators. Every firing is logged. False positives can be marked directly in the ARCHITECT panel — building a personal correction dataset.
 
 ---
 
 ## Two-Level Architecture
 
 ```
-STRUCTURAL LAYER (SDE + Drift Law)
-  → defines where meaningful signal emerges
+STRUCTURAL LAYER — defines where meaningful signal emerges
+  SDE + Drift Law specify the stable operating regime
 
-CONTROL LAYER (Pipe injection = u_drift(t))
-  → keeps the system in that regime
-
+CONTROL LAYER — keeps the system in that regime
   dψ/dt = F_system(ψ) + u_drift(t)
+```
 
-u_drift(t) acts on system evolution only.
-It does not modify the coherence observable C
-or its Kalman/GARCH measurement structure.
+`u_drift(t)` (the pipe injection) acts on system evolution only. It does not modify the coherence observable or the Kalman/GARCH measurement structure. The empirical measurements remain valid regardless of control layer behavior.
+
+---
+
+## Features
+
+### Harness
+
+- **Auto-escalation** — 3/5/8 drift events → MODERATE/DEEP/EXTREME. Auto de-escalation when score recovers.
+- **Meta-harness** — auto-switches presets based on session health (CREATIVE→TECHNICAL on variance spike, etc.)
+- **6 industry presets** — DEFAULT, TECHNICAL, CREATIVE, RESEARCH, MEDICAL/LEGAL, CUSTOM
+- **11 feature toggles** — Kalman, GARCH, SDE bands, RAG, Pipe, Mute, Gate, B-Sig, H-Sig, Pruning, Zero-Drift
+
+### TUNE Modal (4 tabs)
+
+- **PRESETS** — full parameter exposure per profile
+- **FEATURES** — feature toggles, SDE α/β_p/σ editable, post-audit CUSTOM threshold
+- **MATH** — all 5 coherence weights editable, live sum display, Kalman R/σP/RAG/tokens wired to live math
+- **DISPLAY** — dark/light theme, chat panel width 30–70%
+
+### Exports
+
+| Export | Contents |
+|--------|----------|
+| CHAT | Full conversation + per-turn audit table |
+| ARCHITECT LOG | JSONL event log |
+| RESEARCH | CSV metrics + JSONL bundle |
+| SDE PATHS | Monte Carlo paths for surrogate model training |
+
+### Research Tools
+
+- **Human override scores** — rate any turn 0–1, persisted to storage
+- **Session summary** — 8-metric card with health, drift events, signal counts
+- **Correlation coefficient** — your ratings vs raw C score (validation instrument)
+- **Export with ratings** — RESEARCH CSV + override scores + r value
+- **False positive marking** — FALSE+ button on every signal entry
+- **Research notes** — free-form text, stamped on exports, persists across resets
+- **Bookmarks** — annotate any turn, copy all notes in one click
+
+---
+
+## Validation Status
+
+### Confirmed (mathematically)
+SDE · Kalman · GARCH · TF-IDF + JSD · Pipe injection · Behavioral signals · Hallucination signals · Context pruning · RAG · Session health · Meta-harness · Post-audit dual-filter · Adaptive sigma · Zero-Drift Lock
+
+### External review (independent AI systems)
+> "The SDE + Kalman + GARCH triad is mathematically rigorous. JSD is the killer feature — proven to catch semantic drift better than KL divergence or cosine similarity. Top 1% of public AI tooling."
+
+> "17 distinct modeling components. No public equivalent combines this many live mathematical models with active steering and human validation in a single client-side wrapper."
+
+### Literature
+- Chuang et al. 2024 (DoLa) — confirms JSD for semantic drift detection in LLMs
+- Sharma et al. ICLR 2024 (Anthropic) — sycophancy as systematic RLHF behavior
+- EEG dataset ds001787 — biological activation at S ≈ 0.54–0.62 overlaps framework operating band
+
+### Requires independent validation
+- [ ] C-score correlation with human judgment ← measurement instrument built into the tool
+- [ ] H-signal false positive rate ← false positive logging built into the tool
+- [ ] Side-by-side A/B: harness on vs off, same prompts, logged
+
+---
+
+## SDK
+
+The mathematical engine is available as a standalone TypeScript package.
+
+```bash
+# Coming to npm — currently available from this repo
+cd sdk/
+npm install
+npm run build
+```
+
+```typescript
+import { computeCoherence, kalmanStep, buildPipeInjection, KAPPA, EPSILON } from './sdk/src';
+
+const score  = computeCoherence(response, history);
+const kalman = kalmanStep(state, score, turn * (2 * Math.PI / 12), SDE_PARAMS);
+const pipe   = buildPipeInjection({ smoothedVar, kalmanX: kalman.x, ... });
+const system = basePrompt + pipe;
+```
+
+MIT licensed. Every constant exposed. Not Claude-specific — works with any LLM API.
+
+---
+
+## Repository Structure
+
+```
+hudson-perry-drift-law/
+├── ARCHITECT.jsx          # Full working application (React/JSX)
+├── sdk/                   # TypeScript SDK — hpdl-sdk v1.5.1
+│   └── src/
+│       ├── constants.ts
+│       ├── sde.ts
+│       ├── coherence.ts
+│       ├── drift.ts
+│       ├── signals.ts
+│       ├── engine.ts
+│       ├── storage.ts
+│       └── index.ts
+├── docs/
+│   ├── ARCHITECT_V152.pdf  # Full source PDF with session notes
+│   └── FRAMEWORK.md        # Mathematical framework document
+├── README.md
+├── CONTRIBUTING.md
+├── SECURITY.md
+└── LICENSE
 ```
 
 ---
@@ -178,18 +288,19 @@ or its Kalman/GARCH measurement structure.
 If you use this in published research:
 
 ```
-Hudson, D. & Perry, D. (2026). Hudson & Perry's Drift Law — ARCHITECT V1.5.1.
-Hudson & Perry Research. @RaccoonStampede · @Prosperous727
+Perry, D. & Hudson, D. (2026). Hudson & Perry's Drift Law — ARCHITECT V1.5.2.
+Hudson & Perry Research. github.com/Myth727/hudson-perry-drift-law
+@Prosperous727 · @RaccoonStampede
 ```
 
 ---
 
-## Related
+## License
 
-- **ARCHITECT artifact** — full React UI with live coherence dashboard
-- **Framework document** — mathematical derivations (available in-app via GUIDE → FRAMEWORK)
-- **Research exports** — CSV + JSONL session data for surrogate model training
+MIT — see [LICENSE](LICENSE) for full terms.
+
+The Hudson Constants (κ = 0.444, ε = 0.05, RESONANCE_ANCHOR = 623.81) are the framework identity constants published by Hudson & Perry Research (2026). Attribution appreciated when used in published research.
 
 ---
 
-*© 2026 Hudson & Perry Research — Experimental R&D. All outputs are proxy indicators.*
+*© 2026 Hudson & Perry Research — Experimental R&D. All outputs are proxy indicators. Not for clinical or legal use.*
