@@ -1,0 +1,42 @@
+{
+  "name": "hpdl-sdk",
+  "version": "1.5.1",
+  "description": "Hudson & Perry Drift Law — AI coherence engine. SDE + Kalman + GARCH + TF-IDF/JSD + behavioral/hallucination signal detection.",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
+    "lint": "tsc --noEmit"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "ai", "coherence", "drift-law", "kalman", "sde", "garch",
+    "hallucination-detection", "behavioral-signals", "anthropic",
+    "llm-monitoring", "hudson-perry"
+  ],
+  "author": "David Hudson <@RaccoonStampede> & David Perry <@Prosperous727>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hudson-perry/hpdl-sdk"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "peerDependencies": {}
+}

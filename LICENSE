@@ -1,6 +1,7 @@
 MIT License
 
-Copyright (c) 2026 Prosperous727
+Copyright (c) 2026 Hudson & Perry Research
+Authors: David Hudson (@RaccoonStampede) & David Perry (@Prosperous727)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +20,20 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+RESEARCH NOTICE
+
+This software implements mathematical proxy indicators — not clinically or
+legally validated measurements. All outputs (coherence scores, signal
+detections, session health) are experimental research tools. No warranty
+expressed or implied regarding accuracy or fitness for any purpose.
+
+The Hudson Constants (κ = 0.444, RESONANCE_ANCHOR = 623.81, ε = 0.05) are
+the framework identity constants published by Hudson & Perry Research (2026).
+Attribution appreciated when used in published research.
+
+Reference:
+  Hudson, D. & Perry, D. (2026). Hudson & Perry's Drift Law — ARCHITECT V1.5.1.
+  Hudson & Perry Research. @RaccoonStampede · @Prosperous727
