@@ -5,7 +5,7 @@ import {
 } from "recharts";
 
 // ═══════════════════════════════════════════════════════════════
-//  FILE: ARCHITECT.jsx
+//  FILE: ARCHITECT.jsx  ← upload to GitHub with this exact name (all caps)
 //  HUDSON & PERRY'S DRIFT LAW — ARCHITECT · V1.5.2
 //  © Hudson & Perry Research
 //  Authors: David Hudson (@RaccoonStampede)
@@ -14,6 +14,44 @@ import {
 //  ⚠ RESEARCH & DEVELOPMENT — NOT FOR CLINICAL OR LEGAL USE
 //  This tool is experimental. All outputs are proxy indicators.
 //  No warranty expressed or implied. Use at your own discretion.
+//
+//  V1.5.2 patches (applied in order — do not revert individually):
+//    P1:  Version strings unified — export block, guide, framework all V1.5.2
+//    P2:  Config save dep array — nPaths/postAuditMode/customMutePhrases/
+//         researchNotes were missing, silently not persisting on change
+//    P3:  corrections persistence — loaded from hpdl_data but never saved back
+//    P4:  Rewind index bug — turnSnapshots[clickedTurn-1] broke after turn 20.
+//         Fixed to .find(s=>s.turn===n) — works at any turn number
+//    P5:  Bookmarks now save immediately on toggle — was only on next send
+//    P6:  rewindConfirm cleared in resumeLive — stale dialog could linger
+//    P7:  Post-audit now scores against finalMessages (includes new reply).
+//         Previously used same inputs as rawScore so delta was always ~0
+//         and quietFail never fired. Now genuinely measures second perspective.
+//    P8:  finalDriftCount moved before meta-harness block — single source of
+//         truth. meta-harness now uses finalDriftCount directly.
+//    P9:  deleteTurn variance now uses updateSmoothedVariance (GARCH blend)
+//         instead of raw population variance — prevents discontinuity in
+//         research exports after any deletion
+//    P10: corrections removed from sendMessage dep array — never read inside
+//         sendMessage, only in UI render. Was causing unnecessary invalidation.
+//    P11: HC_MASS_LOSS aliased to KAPPA — was hardcoded 0.444 literal,
+//         now single source of truth
+//    P12: Dead pruneThreshold/pruneKeep state documented — setters never
+//         called, actual pruning uses cfg.pruneThreshold from preset
+//    P13: chartData wrapped in useMemo — was sorting livePaths on every render
+//    P14: PRECOMPUTED_PATHS performance note added — runs on main thread at load
+//    P15: API key warning won't fire in Claude artifact sandbox (claude.ai)
+//    P16: statusMessage state added — rewind/delete status now uses
+//         setStatusMessage, file errors stay in setFileError
+//
+//  V1.5.2 cleanup (dead code removed, no behaviour change):
+//    • jaccardSimilarity() — defined but never called anywhere. Removed.
+//    • VAR_SMOOTH_ALPHA = 0.9 — declared but never referenced. Removed.
+//    • p50 in sdePercentilesAtStep — computed but never destructured. Removed.
+//    • PRECOMPUTED_PATHS — livePaths useMemo is what the chart uses. Removed.
+//      Wrong comment referencing PRECOMPUTED_PATHS also corrected.
+//    • P12 comment corrected — pruneThreshold/pruneKeep ARE wired to sliders
+//      but only take effect in CUSTOM mode (preset value overrides via ??)
 //
 //  V1.5.0 additions:
 //    • SDE path knob      — nPaths tunable in TUNE: dropdown 10/25/50/
@@ -58,6 +96,9 @@ import {
 const API_ENDPOINT = "https://api.anthropic.com/v1/messages"; // ← change to "/api/claude" on Vercel
 
 // ── Feature toggles ────────────────────────────────────────────
+// P17: These module-level constants are BOOT DEFAULTS only.
+// All runtime logic uses featRAG, featPipe, featMute etc. state (toggleable in TUNE).
+// These constants set the initial useState values and are not read after mount.
 const USE_RAG            = true;
 const RAG_TOP_K          = 3;
 const PRUNE_THRESHOLD    = 8;
@@ -81,7 +122,6 @@ const VAR_DECOHERENCE  = 0.200;
 const VAR_CAUTION      = 0.120;
 const VAR_CALM         = 0.080;
 const LOCK_888_STREAK  = 5;
-const VAR_SMOOTH_ALPHA = 0.9;
 
 // ── Drift gate word limit ──────────────────────────────────────
 const DRIFT_GATE_WORD_LIMIT = 120;
@@ -171,7 +211,7 @@ const HALO_THRESHOLD   = 0.0004*(1+SENSITIVITY);
 const KALMAN_R         = 0.015;
 const KALMAN_SIGMA_P   = 0.06;
 const LOCK_888         = 0.888;
-const HC_MASS_LOSS     = 0.444;
+const HC_MASS_LOSS     = KAPPA; // P11: was 0.444 literal — aliased to KAPPA (same value, single source of truth)
 
 const SDE_PARAMS = {alpha:-0.25,beta_p:0.18,omega:2*Math.PI/12,sigma:0.10,kappa:KAPPA};
 
@@ -209,7 +249,7 @@ function simulateSDE(params,T,dt=0.02,nPaths=50,seed=42) {
 
 function sdePercentilesAtStep(paths,step) {
   const vals=paths.map(p=>p[Math.min(step,p.length-1)]).sort((a,b)=>a-b),n=vals.length;
-  return {p10:vals[Math.floor(n*.10)],p50:vals[Math.floor(n*.50)],p90:vals[Math.floor(n*.90)]};
+  return {p10:vals[Math.floor(n*.10)],p90:vals[Math.floor(n*.90)]};
 }
 
 // ── Kalman ─────────────────────────────────────────────────────
@@ -370,12 +410,6 @@ function tfidfSimilarity(tokensA, tokensB) {
   });
   const denom=Math.sqrt(normA)*Math.sqrt(normB);
   return denom===0?0:Math.min(dot/denom,1);
-}
-
-function jaccardSimilarity(a,b) {
-  const sa=new Set(a),sb=new Set(b);let inter=0;
-  sa.forEach(w=>{if(sb.has(w))inter++;});const union=sa.size+sb.size-inter;
-  return union===0?1:inter/union;
 }
 
 // ── Jensen-Shannon Divergence ──────────────────────────────────
@@ -789,10 +823,6 @@ Init Kalman from KALMAN_X/KALMAN_P. Set MODE. Resume calm streak from CALM_STREA
 All constants locked.
 END_MISSION_PROTOCOL`;
 }
-
-// ── Precomputed SDE ────────────────────────────────────────────
-// V1.5.0: Initial paths computed at 50 (default). Recomputed when nPaths changes via useMemo.
-const PRECOMPUTED_PATHS=simulateSDE(SDE_PARAMS,20,.02,50,42);
 
 // ── Tooltip ────────────────────────────────────────────────────
 function CoherenceTooltip({active,payload,label}) {
@@ -1396,6 +1426,11 @@ export default function HudsonPerryDriftV1() {
   const [turnCount,       setTurnCount]       = useState(0);
   const [lastScore,       setLastScore]       = useState(null);
   const [showParams,      setShowParams]      = useState(false);
+  // P12: pruneThreshold/pruneKeep state ARE wired to UI sliders in the TUNE panel,
+  // but pruneContext() calls cfg.pruneThreshold??pruneThreshold — meaning the active
+  // preset's value always wins unless CUSTOM is selected. The sliders visually work
+  // but only take effect in CUSTOM mode. Kept as-is; removing would break the CUSTOM
+  // preset editor which writes back into customConfig, not these state vars directly.
   const [pruneThreshold,  setPruneThreshold]  = useState(PRUNE_THRESHOLD);
   const [pruneKeep,       setPruneKeep]       = useState(PRUNE_KEEP);
   const [showExport,      setShowExport]      = useState(false);
@@ -1406,6 +1441,9 @@ export default function HudsonPerryDriftV1() {
   const [copied,          setCopied]          = useState(false);
   const [attachments,     setAttachments]     = useState([]);
   const [fileError,       setFileError]       = useState("");
+  // P16: statusMessage separates non-error status (rewind, delete confirmations)
+  // from genuine file errors. Both previously used setFileError which was misleading.
+  const [statusMessage,   setStatusMessage]   = useState("");
   const [ragCache,        setRagCache]        = useState([]);
   const [ragHits,         setRagHits]         = useState(0);
   const [showApiKey,      setShowApiKey]      = useState(false);
@@ -1565,17 +1603,18 @@ export default function HudsonPerryDriftV1() {
      nPaths,postAuditMode,customMutePhrases,researchNotes]);
 
   useEffect(()=>{
-    if (!coherenceData.length) return;
+    if (!coherenceData.length&&!bookmarks.length) return;
     (async()=>{
       try {
         await window.storage.set("hpdl_data", JSON.stringify({
-          coherenceData,eventLog,errorLog,bookmarks,
+          coherenceData,eventLog,errorLog,bookmarks,corrections, // P3+P5
           driftCount,turnCount,calmStreak,lock888Achieved,
           smoothedVar,scoreHistory,ragCache,kalmanState,
         }));
       } catch(e) { console.warn("hpdl: data save failed",e); }
     })();
-  },[coherenceData]);
+  // P5: bookmarks added to deps — saves immediately on toggle, not only on next send
+  },[coherenceData,bookmarks]);
 
   const currentMode=HARNESS_MODES[harnessMode];
   const cap_eff=driftLawCapEff(currentMode.gamma_h);
@@ -1625,7 +1664,10 @@ export default function HudsonPerryDriftV1() {
   },[]);
 
   // ── Chart data ───────────────────────────────────────────────
-  const chartData=coherenceData.map((d,i)=>{
+  // P13: wrapped in useMemo — sdePercentilesAtStep sorts livePaths (up to 500 paths)
+  // per turn entry. Without memo this ran on every render. Now only recomputes
+  // when coherenceData, livePaths, or harnessMode actually changes.
+  const chartData=useMemo(()=>coherenceData.map((d,i)=>{
     const step=Math.round((i+1)*15),pcts=sdePercentilesAtStep(livePaths,step);
     const mean=d.kalman,floor=1-driftLawFloor(i+1,currentMode.gamma_h)*2;
     return {
@@ -1635,11 +1677,13 @@ export default function HudsonPerryDriftV1() {
       floor:Math.max(.20,floor),
       harness:d.harnessActive?d.raw:null,
     };
-  });
+  }),[coherenceData,livePaths,currentMode]);
 
   // ── REWIND ───────────────────────────────────────────────────
   const restoreToTurn=useCallback((clickedTurn)=>{
-    const snap=turnSnapshots[clickedTurn-1];
+    // P4: was turnSnapshots[clickedTurn-1] — breaks after turn 20 when buffer rolls.
+    // Search by snap.turn instead so it works at any turn number.
+    const snap=turnSnapshots.find(s=>s.turn===clickedTurn);
     if (!snap) return;
     setMessages(snap.messages);
     setKalmanState(snap.kalmanState);
@@ -1655,20 +1699,23 @@ export default function HudsonPerryDriftV1() {
     setRagCache(snap.ragCache);
     setRewindTurn(clickedTurn);
     setRewindConfirm(null);
-    setFileError(`Rewound to Turn ${clickedTurn}`);
+    setStatusMessage(`Rewound to Turn ${clickedTurn}`); // P16: was setFileError
   },[turnSnapshots]);
 
   const handleChartClick=useCallback((data)=>{
     if (!data?.activePayload?.length) return;
     const clickedTurn=data.activePayload[0]?.payload?.turn;
     if (!clickedTurn) return;
-    const snap=turnSnapshots[clickedTurn-1];
+    // P4: same fix — find by turn number not array index
+    const snap=turnSnapshots.find(s=>s.turn===clickedTurn);
     if (!snap) return;
     setRewindConfirm(clickedTurn);
   },[turnSnapshots]);
 
   const resumeLive=useCallback(()=>{
     setRewindTurn(null);
+    setRewindConfirm(null); // P6: was never cleared — stale confirm dialog could linger
+    setStatusMessage(""); // P16: clear rewind status message on resume
     setFileError("");
     const last=turnSnapshots[turnSnapshots.length-1];
     if (last) {
@@ -1693,7 +1740,7 @@ export default function HudsonPerryDriftV1() {
     if ((!text&&!attachments.length)||isLoading) return;
 
     setRewindTurn(null);
-    setInput(""); setFileError("");
+    setInput(""); setFileError(""); setStatusMessage(""); // P16: clear status on new send
     const pending=[...attachments]; setAttachments([]);
     setIsLoading(true);
 
@@ -1750,7 +1797,12 @@ export default function HudsonPerryDriftV1() {
       const headers={"Content-Type":"application/json","anthropic-version":"2023-06-01"};
       if (apiKey.trim()) {
         headers["x-api-key"]=apiKey.trim();
-        if (typeof window!=="undefined"&&window.location.hostname!=="localhost") {
+        // P15: was hostname!=="localhost" — fires in Claude artifact sandbox (claude.ai iframe)
+        // even though that's a sandboxed context. Now also excludes claude.ai origins.
+        const host=typeof window!=="undefined"?window.location.hostname:"";
+        const isLocal=host==="localhost"||host==="127.0.0.1";
+        const isSandbox=host.includes("claude.ai")||host.includes("anthropic.com");
+        if (!isLocal&&!isSandbox) {
           console.warn("⚠️ API key exposed in browser. Use a backend proxy for production.");
         }
       }
@@ -1854,14 +1906,19 @@ export default function HudsonPerryDriftV1() {
       // ── V1.5.0: Post-audit pass ───────────────────────────────
       // Light: fires when Kalman x̂ < 0.70 only
       // Full: every turn
-      // Recomputes coherence on final text, refreshes sourceScore,
-      // logs delta. If post-audit C < live C by > 0.08 = quiet fail.
+      // P7: post-audit now scores against finalMessages (full history including
+      // the new assistant response) rather than newMessages (history without it).
+      // Previously both rawScore and postAuditScore used identical inputs so
+      // delta was always ~0 and quietFail never fired. Now post-audit measures
+      // coherence of the response within the complete updated context.
       let postAuditScore=null;
       let quietFail=false;
       const doPostAudit=postAuditMode==="full"||(postAuditMode==="light"&&kalmanState.x<0.70)||(postAuditMode==="custom"&&kalmanState.x<postAuditThresh);
       if (doPostAudit&&turn>=2) {
         try {
-          postAuditScore=computeCoherence(content_raw,[...newMessages],{tfidf:mathTfidf,jsd:mathJsd,length:mathLen,structure:mathStruct,persistence:mathPersist},mathRepThresh);
+          // Score against finalMessages (includes new assistant reply) — gives
+          // a genuine second perspective vs rawScore which used newMessages only.
+          postAuditScore=computeCoherence(content_raw,finalMessages,{tfidf:mathTfidf,jsd:mathJsd,length:mathLen,structure:mathStruct,persistence:mathPersist},mathRepThresh);
           const delta=rawScore-postAuditScore;
           quietFail=delta>0.08;
           const now2=new Date().toISOString();
@@ -1920,7 +1977,7 @@ export default function HudsonPerryDriftV1() {
 
       // ── V1.5.0: Adaptive sigma — EWMA toward sqrt(smoothedVar) ──
       // Sigma only. Kappa stays fixed at 0.444 (Hudson Constant).
-      // Chart bands use PRECOMPUTED_PATHS so adapting sigma here is safe.
+      // Chart bands use livePaths (useMemo) so adapting sigma here is safe.
       let newAdaptedSigma=adaptedSigma;
       if (adaptiveSigmaOn&&newVar!=null&&newVar>0) {
         const targetSigma=Math.sqrt(newVar);
@@ -1978,13 +2035,23 @@ export default function HudsonPerryDriftV1() {
       const newCData=[...currentCData,{raw:rawScore,kalman:newKalman.x,harnessActive:drifted,mode:newMode,smoothedVar:newVar,hallucinationFlag,hallucinationSignals:hallucinationAssessment.signals,sourceScore:hallucinationAssessment.sourceScore,behavioralFlag,behavioralSignals:behavioralAssessment.signals,postAuditScore,quietFail}];
       setCoherenceData(newCData);
 
+      // P8: finalDriftCount moved here — before meta-harness — so mhHealth can reference it
+      // directly rather than re-deriving driftCount+1 independently.
+      const finalDriftCount=drifted
+        ?driftCount+1
+        :rawScore>.85&&driftCount>0
+          ?Math.max(0,driftCount-1)
+          :driftCount;
+
       // ── V1.5.0: Meta-harness — auto-switch preset based on session health ──
       // Switches only when health is significantly off from preset's optimal range.
       // Never overrides CUSTOM or MEDICAL (user intent / high-stakes).
       // Only acts after turn 3 so early noise doesn't trigger it.
       if (turn>=3&&activePreset!=="CUSTOM"&&activePreset!=="MEDICAL") {
+        // P8: use finalDriftCount (computed below) instead of re-deriving driftCount+1 here
+        // Both values are identical in practice but referencing one source is safer.
         const mhHealth=computeSessionHealth(newCData,
-          drifted?driftCount+1:driftCount,newVar,newCalm,lock888Achieved,cfg);
+          finalDriftCount,newVar,newCalm,lock888Achieved,cfg);
         if (mhHealth!==null) {
           // Variance spike on a CREATIVE session → switch to TECHNICAL
           if (activePreset==="CREATIVE"&&newVar>(cfg.varDecoherence??VAR_DECOHERENCE)*0.8) {
@@ -2045,13 +2112,6 @@ export default function HudsonPerryDriftV1() {
         ?[...ragCache,buildRagEntry(content_raw,rawScore,turn)].sort((a,b)=>b.score-a.score).slice(0,20)
         :ragCache;
       if (featRAG) setRagCache(newRagCache);
-
-      // Compute final driftCount for snapshot — accounts for both increment and decay
-      const finalDriftCount=drifted
-        ?driftCount+1
-        :rawScore>.85&&driftCount>0
-          ?Math.max(0,driftCount-1)
-          :driftCount;
 
       // ── Stage: snapshot_save ──────────────────────────────────
       try {
@@ -2114,7 +2174,9 @@ export default function HudsonPerryDriftV1() {
      eventLog,adaptedSigma,adaptationRate,adaptiveSigmaOn,
      cfg,featKalman,featGARCH,featSDE,featRAG,featPipe,
      featMute,featGate,featBSig,featHSig,featPrune,
-     userKappa,userAnchor,nPaths,postAuditMode,corrections,
+     userKappa,userAnchor,nPaths,postAuditMode,
+     // P10: corrections removed — it is never read inside sendMessage,
+     // only used in UI rendering. Was causing unnecessary callback invalidation.
      mathTfidf,mathJsd,mathLen,mathStruct,mathPersist,mathRepThresh,
      mathKalmanR,mathKalmanSigP,mathRagTopK,mathMaxTokens,
      sdeAlphaVal,sdeBetaVal,sdeSigmaVal,sdeAlphaOn,sdeBetaOn,sdeSigmaOn,
@@ -2126,7 +2188,7 @@ export default function HudsonPerryDriftV1() {
   const resetSession=()=>{
     setMessages([]);setCoherenceData([]);setKalmanState({x:0,P:.05});
     setHarnessMode("audit");setDriftCount(0);setTurnCount(0);setLastScore(null);
-    setShowExport(false);setAttachments([]);setFileError("");
+    setShowExport(false);setAttachments([]);setFileError("");setStatusMessage("");
     setRagCache([]);setRagHits(0);setEventLog([]);setErrorLog([]);
     setScoreHistory([]);setSmoothedVar(null);setCalmStreak(0);
     setLock888Achieved(false);setLastPipeState(null);
@@ -2159,13 +2221,14 @@ export default function HudsonPerryDriftV1() {
     const newHist=newCData.map(d=>d.raw);
     setScoreHistory(newHist);
     if (newHist.length>=2) {
-      const mean=newHist.reduce((s,v)=>s+v,0)/newHist.length;
-      const raw=newHist.reduce((s,v)=>s+Math.pow(v-mean,2),0)/newHist.length;
-      setSmoothedVar(raw);
+      // P9: was raw population variance — inconsistent with GARCH used on normal turns,
+      // causing a variance spike in research exports after any deletion.
+      // Now uses updateSmoothedVariance (GARCH blend) for consistency.
+      setSmoothedVar(updateSmoothedVariance(newHist, smoothedVar));
     }
     setTurnSnapshots([]);
     setRewindTurn(null);
-    setFileError(`Turn ${assistantMsgIndex+1} deleted — context freed. Snapshots cleared.`);
+    setStatusMessage(`Turn ${assistantMsgIndex+1} deleted — context freed. Snapshots cleared.`); // P16
   },[messages,coherenceData]);
 
   // ── Bookmark toggle ──────────────────────────────────────────
@@ -2737,9 +2800,18 @@ export default function HudsonPerryDriftV1() {
           {fileError&&(
             <div style={{
               ...S.errorBar,
-              color: fileError.startsWith("⟲")?"#40D080":fileError.startsWith("⚠")?"#E05060":"#1EAAAA",
-              borderTopColor: fileError.startsWith("⟲")?"#40D08033":fileError.startsWith("⚠")?"#E0506033":"#1EAAAA33",
+              color: fileError.startsWith("⚠")?"#E05060":"#1EAAAA",
+              borderTopColor: fileError.startsWith("⚠")?"#E0506033":"#1EAAAA33",
             }}>{fileError}</div>
+          )}
+
+          {/* P16: statusMessage — non-error status (rewind, delete). Separate from file errors. */}
+          {statusMessage&&!fileError&&(
+            <div style={{
+              ...S.errorBar,
+              color:"#40D080",
+              borderTopColor:"#40D08033",
+            }}>{statusMessage}</div>
           )}
 
           <div style={S.inputRow}>
