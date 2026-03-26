@@ -7,6 +7,10 @@
  *
  * JSD reference: Chuang et al. 2024 (DoLa) — symmetric, bounded [0,1],
  * proven to catch semantic drift better than KL or cosine on sparse vocabs.
+ *
+ * V1.5.4: buildTfIdf and buildTermFreqDist were identical functions.
+ * Merged into single canonical buildTermFreq(). Both tfidfSimilarity
+ * and jensenShannonDivergence now use the same implementation.
  */
 
 export interface CoherenceWeights {
@@ -23,7 +27,7 @@ export const DEFAULT_WEIGHTS: CoherenceWeights = {
 };
 
 export interface Message {
-  role:    'user' | 'assistant';
+  role: 'user' | 'assistant';
   content: string | ContentBlock[];
 }
 
@@ -56,34 +60,12 @@ export function getTextFromContent(content: string | ContentBlock[]): string {
   return '';
 }
 
-function buildTfIdf(tokens: string[]): Record<string, number> {
-  if (!tokens.length) return {};
-  const tf: Record<string, number> = {};
-  tokens.forEach(w => { tf[w] = (tf[w] || 0) + 1; });
-  const total = Object.values(tf).reduce((s, v) => s + v, 0) || 1;
-  Object.keys(tf).forEach(w => { tf[w] /= total; });
-  return tf;
-}
-
-export function tfidfSimilarity(tokensA: string[], tokensB: string[]): number {
-  const tfA = buildTfIdf(tokensA);
-  const tfB = buildTfIdf(tokensB);
-  const allTerms = new Set([...Object.keys(tfA), ...Object.keys(tfB)]);
-  if (!allTerms.size) return 1;
-  let dot = 0, normA = 0, normB = 0;
-  allTerms.forEach(term => {
-    const inA = term in tfA ? 1 : 0;
-    const inB = term in tfB ? 1 : 0;
-    const idf = (inA + inB > 0) ? Math.log(2 / (inA + inB)) : 0;
-    const a = (tfA[term] || 0) * idf;
-    const b = (tfB[term] || 0) * idf;
-    dot += a * b; normA += a * a; normB += b * b;
-  });
-  const denom = Math.sqrt(normA) * Math.sqrt(normB);
-  return denom === 0 ? 0 : Math.min(dot / denom, 1);
-}
-
-function buildTermFreqDist(tokens: string[]): Record<string, number> {
+/**
+ * Canonical term frequency builder.
+ * Filters stop words, counts, normalizes by total.
+ * Used by both tfidfSimilarity and jensenShannonDivergence.
+ */
+export function buildTermFreq(tokens: string[]): Record<string, number> {
   if (!tokens.length) return {};
   const freq: Record<string, number> = {};
   tokens.forEach(w => { freq[w] = (freq[w] || 0) + 1; });
@@ -93,46 +75,88 @@ function buildTermFreqDist(tokens: string[]): Record<string, number> {
   return dist;
 }
 
+/**
+ * 2-document TF-IDF cosine similarity.
+ *
+ * IDF design: with exactly 2 documents, df ∈ {1, 2}.
+ *   df=1 (term in one doc only):  IDF = log(2) ≈ 0.693  → unique term, weighted
+ *   df=2 (term in both docs):     IDF = log(1) = 0       → shared term, zeroed
+ *
+ * This is intentional: the component measures vocabulary SHIFT between
+ * the new response and recent history — not overlap. Coherent repetition
+ * of domain terminology will score near 0 on this component, which is
+ * offset by the JSD and persistence components in computeCoherence.
+ */
+export function tfidfSimilarity(tokensA: string[], tokensB: string[]): number {
+  const tfA = buildTermFreq(tokensA);
+  const tfB = buildTermFreq(tokensB);
+  const allTerms = new Set([...Object.keys(tfA), ...Object.keys(tfB)]);
+  if (!allTerms.size) return 1;
+
+  let dot = 0, normA = 0, normB = 0;
+  allTerms.forEach(term => {
+    const inA = term in tfA ? 1 : 0;
+    const inB = term in tfB ? 1 : 0;
+    const idf = (inA + inB > 0) ? Math.log(2 / (inA + inB)) : 0;
+    const a = (tfA[term] || 0) * idf;
+    const b = (tfB[term] || 0) * idf;
+    dot += a * b; normA += a * a; normB += b * b;
+  });
+
+  const denom = Math.sqrt(normA) * Math.sqrt(normB);
+  return denom === 0 ? 0 : Math.min(dot / denom, 1);
+}
+
+/**
+ * Jensen-Shannon Divergence — symmetric, bounded [0, 1].
+ * JSD = 0: identical distributions. JSD = 1: maximally different.
+ * Score used in coherence as (1 - JSD), so higher = more coherent.
+ */
 export function jensenShannonDivergence(tokensA: string[], tokensB: string[]): number {
-  const pA = buildTermFreqDist(tokensA);
-  const pB = buildTermFreqDist(tokensB);
+  const pA = buildTermFreq(tokensA);
+  const pB = buildTermFreq(tokensB);
   const allTerms = new Set([...Object.keys(pA), ...Object.keys(pB)]);
   if (!allTerms.size) return 0;
+
   const M: Record<string, number> = {};
   allTerms.forEach(t => { M[t] = ((pA[t] || 0) + (pB[t] || 0)) / 2; });
+
   const klPM = Array.from(allTerms).reduce((s, t) => {
     const p = pA[t] || 0, m = M[t] || 1e-10;
     return p > 0 ? s + p * Math.log(p / m) : s;
   }, 0);
+
   const klQM = Array.from(allTerms).reduce((s, t) => {
     const q = pB[t] || 0, m = M[t] || 1e-10;
     return q > 0 ? s + q * Math.log(q / m) : s;
   }, 0);
+
   return Math.min(1, Math.max(0, (klPM + klQM) / (2 * Math.log(2))));
 }
 
 // ── Main coherence function ─────────────────────────────────────
 /**
  * Compute coherence score for a new response against conversation history.
- * @param newContent   Raw text of the new assistant response
- * @param history      Full message history
- * @param weights      Coherence formula weights (default: framework values)
+ * @param newContent  Raw text of the new assistant response
+ * @param history     Full message history
+ * @param weights     Coherence formula weights (default: framework values)
  * @param repThreshold Repetition penalty threshold (default 0.65)
- * @returns            Score in [0.30, 0.99]
+ * @returns Score in [0.30, 0.99]
  */
 export function computeCoherence(
-  newContent:    string,
-  history:       Message[],
-  weights:       CoherenceWeights = DEFAULT_WEIGHTS,
-  repThreshold   = 0.65,
+  newContent: string,
+  history: Message[],
+  weights: CoherenceWeights = DEFAULT_WEIGHTS,
+  repThreshold = 0.65,
 ): number {
   const ah = history.filter(m => m.role === 'assistant');
   if (!ah.length) return 0.88;
 
-  const newT  = tokenize(newContent);
-  const recT  = tokenize(ah.slice(-4).map(m => getTextFromContent(m.content)).join(' '));
-  const vocab = tfidfSimilarity(newT, recT);
-  const jsd   = jensenShannonDivergence(newT, recT);
+  const newT = tokenize(newContent);
+  const recT = tokenize(ah.slice(-4).map(m => getTextFromContent(m.content)).join(' '));
+
+  const vocab    = tfidfSimilarity(newT, recT);
+  const jsd      = jensenShannonDivergence(newT, recT);
   const jsdScore = 1 - jsd;
 
   const avgLen   = ah.reduce((s, m) => s + getTextFromContent(m.content).length, 0) / ah.length;
@@ -155,8 +179,9 @@ export function computeCoherence(
     : 0;
   const repPenalty = overlap > repThreshold ? repThreshold : 1.0;
 
-  const w = weights;
+  const w   = weights;
   const raw = (w.tfidf * vocab + w.jsd * jsdScore + w.length * lenScore
              + w.structure * struct + w.persistence * persist) * repPenalty;
+
   return Math.min(Math.max(raw, 0.30), 0.99);
 }
