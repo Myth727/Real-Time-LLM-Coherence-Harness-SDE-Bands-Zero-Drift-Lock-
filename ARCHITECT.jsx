@@ -6,7 +6,7 @@ import {
 
 // ═══════════════════════════════════════════════════════════════
 //  FILE: ARCHITECT.jsx  ← upload to GitHub with this exact name (all caps)
-//  HUDSON & PERRY'S DRIFT LAW — ARCHITECT · V1.5.11
+//  HUDSON & PERRY'S DRIFT LAW — ARCHITECT · V1.5.12
 //  © Hudson & Perry Research
 //  Authors: David Hudson (@RaccoonStampede) · David Perry (@Prosperous727)
 //
@@ -571,7 +571,7 @@ function downloadLog(eventLog, sessionId) {
 
 // V1.5.0: Research Export — CSV per-turn metrics + JSONL bundle
 // Stamped with session UUID, timestamp, active constants.
-function downloadResearch(coherenceData, eventLog, sessionId, userKappa, userAnchor, activePreset, researchNotes) {
+function downloadResearch(coherenceData, eventLog, sessionId, userKappa, userAnchor, activePreset, researchNotes, cfg) {
   const ts = new Date().toISOString();
   const kappaNote = userKappa!==0.444?` [MODIFIED from 0.444]`:"";
   const anchorNote = userAnchor!==623.81?` [MODIFIED from 623.81]`:"";
@@ -594,11 +594,16 @@ function downloadResearch(coherenceData, eventLog, sessionId, userKappa, userAnc
   const csvHeader = "turn,rawC,kalman,smoothedVar,driftEvent,mode,hallucinationFlag,behavioralFlag,sourceScore,health,postAuditScore,quietFail\n";
   const csvRows = coherenceData.map((d,i)=>{
     const health = (() => {
+      // N2 fix: use cfg preset weights so MEDICAL/CREATIVE etc. match live health score.
+      // Was hardcoded 4/6/8 regardless of preset.
+      const dw = cfg?.healthDriftWeight ?? 8;
+      const bw = cfg?.healthBSigWeight  ?? 4;
+      const hw = cfg?.healthHSigWeight  ?? 6;
       const avgC = coherenceData.slice(0,i+1).reduce((s,x)=>s+x.raw,0)/(i+1);
       const dc = coherenceData.slice(0,i+1).filter(x=>x.harnessActive).length;
-      const bP = Math.min(coherenceData.slice(0,i+1).filter(x=>x.behavioralFlag).length*4,20);
-      const hP = Math.min(coherenceData.slice(0,i+1).filter(x=>x.hallucinationFlag).length*6,18);
-      return Math.min(100,Math.max(0,Math.round(avgC*100)-Math.min(dc*8,40)-bP-hP));
+      const bP = Math.min(coherenceData.slice(0,i+1).filter(x=>x.behavioralFlag).length*bw,20);
+      const hP = Math.min(coherenceData.slice(0,i+1).filter(x=>x.hallucinationFlag).length*hw,18);
+      return Math.min(100,Math.max(0,Math.round(avgC*100)-Math.min(dc*dw,40)-bP-hP));
     })();
     return [
       i+1,
@@ -687,7 +692,7 @@ function downloadSdePaths(livePaths, coherenceData, sessionId, nPaths, userKappa
 
 // ── System prompt ──────────────────────────────────────────────
 const BASE_SYSTEM =
-  `You are a highly precise technical assistant operating within Hudson & Perry's Drift Law ARCHITECT V1.5.11 coherence framework. `+
+  `You are a highly precise technical assistant operating within Hudson & Perry's Drift Law ARCHITECT V1.5.12 coherence framework. `+
   `Maintain strict logical consistency across all turns. Reference prior context explicitly when building on it. `+
   `When files are attached, analyze them thoroughly. `+
   `When RAG MEMORY is provided, treat it as recalled context. `+
@@ -726,9 +731,9 @@ function buildExportBlock(s) {
     :"  (empty)";
   const kappaNote=(userKappa??KAPPA)!==KAPPA?` ⚠ MODIFIED from 0.444`:"";
   const anchorNote=(userAnchor??RESONANCE_ANCHOR)!==RESONANCE_ANCHOR?` ⚠ MODIFIED from 623.81`:"";
-  return `START_MISSION_PROTOCOL: HUDSON_PERRY_DRIFT_ARCHITECT_V1.5.11
+  return `START_MISSION_PROTOCOL: HUDSON_PERRY_DRIFT_ARCHITECT_V1.5.12
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Hudson & Perry's Drift Law — ARCHITECT V1.5.11
+Hudson & Perry's Drift Law — ARCHITECT V1.5.12
 © Hudson & Perry Research
 ⚠ R&D ONLY — Proxy indicators, no warranty
 
@@ -1030,7 +1035,7 @@ function computeSessionHealth(coherenceData, driftCount, smoothedVar, calmStreak
 const FRAMEWORK_CONTENT=`HUDSON & PERRY'S DRIFT LAW
 TIME-VARYING ERROR DYNAMICS & AI COHERENCE HARNESS
 Authors: David Hudson (@RaccoonStampede) & David Perry (@Prosperous727)
-Version 3.2  |  V1.5.11  |  © 2026
+Version 3.2  |  V1.5.12  |  © 2026
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1503,7 +1508,7 @@ const DisclaimerModal = React.memo(function DisclaimerModal({showDisclaimer,setS
         </div>
         <div style={{fontFamily:"Courier New, monospace",fontSize:8,
           color:"#4A6060",letterSpacing:1}}>
-          HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.11 · READ IN FULL BEFORE PROCEEDING
+          HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.12 · READ IN FULL BEFORE PROCEEDING
         </div>
       </div>
 
@@ -2108,7 +2113,7 @@ const TuneModal = React.memo(function TuneModal() {
         display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <span style={{fontFamily:"Courier New, monospace",fontSize:8,
           color:"#2E5070",letterSpacing:1}}>
-          ACTIVE: {PRESETS[activePreset]?.label??activePreset} · κ={userKappa.toFixed(4)} · V1.5.11
+          ACTIVE: {PRESETS[activePreset]?.label??activePreset} · κ={userKappa.toFixed(4)} · V1.5.12
         </span>
         <button onClick={()=>setShowTuning(false)}
           style={{padding:"4px 14px",background:"#EEF8F2",
@@ -2576,7 +2581,7 @@ const BookmarksModal = React.memo(function BookmarksModal() {
         </span>
         <span style={{fontFamily:"Courier New, monospace",fontSize:8,
           color:"#2E5070",letterSpacing:1}}>
-          V1.5.11 © HUDSON &amp; PERRY
+          V1.5.12 © HUDSON &amp; PERRY
         </span>
       </div>
     </div>
@@ -2653,6 +2658,17 @@ const GuideModal = React.memo(function GuideModal({showGuide,setShowGuide,guideT
   </div>
   );
 });
+
+// N4 fix: extracted above main component so React sees a stable component type.
+// Was defined inline in render — recreated as a new function reference every render.
+const ScoreBadge=({score,kalman})=>{
+  const ref=kalman!=null?kalman:score;
+  const bg=ref>.70?"#E8F8EE":ref>.50?"#FFF8E8":"#FEEEEE";
+  const fg=ref>.70?"#178040":ref>.50?"#906000":"#C81030";
+  return <span style={{fontFamily:"Courier New, monospace",fontSize:10,padding:"1px 7px",
+    borderRadius:3,background:bg,color:fg,border:`1px solid ${fg}33`,marginLeft:8,letterSpacing:1}}>
+    C={score.toFixed(3)}</span>;
+};
 
 export default function HudsonPerryDriftV1() {
   const [messages,        setMessages]        = useState([]);
@@ -2776,6 +2792,24 @@ export default function HudsonPerryDriftV1() {
     if (rewindTurn===null) chatEndRef.current?.scrollIntoView({behavior:"smooth"});
   },[messages,rewindTurn]);
 
+  // N3 fix: flush researchNotes ref to state on tab close.
+  // Uncontrolled textarea only calls setResearchNotes on blur — if user types
+  // and closes without blurring, the notes would be lost on next session load.
+  useEffect(()=>{
+    const flush=()=>{
+      if(researchNotesRef.current&&researchNotesRef.current!==researchNotes){
+        // Synchronously save latest ref value to storage directly — state update
+        // won't fire in time before unload, but storage.set is fire-and-forget here.
+        try {
+          window.storage.set("hpdl_notes_flush",researchNotesRef.current);
+        } catch(e){}
+      }
+    };
+    window.addEventListener("beforeunload",flush);
+    return ()=>window.removeEventListener("beforeunload",flush);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+
   // V1.5.0b: Load persisted state from window.storage on mount
   // Split keys: hpdl_config (settings/toggles — small) + hpdl_data (metrics/cache — grows)
   // window.storage throws on missing keys — each fetch wrapped individually
@@ -2810,6 +2844,11 @@ export default function HudsonPerryDriftV1() {
         if (p.customMutePhrases)       setCustomMutePhrases(p.customMutePhrases);
         if (p.researchNotes)           setResearchNotes(p.researchNotes);
       } catch(e) { /* hpdl_config not yet set — first session */ }
+      // N3 fix: recover notes flushed via beforeunload if they weren't in hpdl_config
+      try {
+        const nr=await window.storage.get("hpdl_notes_flush");
+        if(nr?.value) { setResearchNotes(nr.value); window.storage.delete("hpdl_notes_flush"); }
+      } catch(e) {}
 
       // ── Data: metrics, events, cache — kept separate to stay under 5MB ──
       try {
@@ -2880,10 +2919,13 @@ export default function HudsonPerryDriftV1() {
   const liveDamping  = 1/(1+userKappa);
   const constantsModified = userKappa!==KAPPA || userAnchor!==RESONANCE_ANCHOR;
   // V1.5.0: recompute SDE paths when nPaths changes
-  const liveSDEOverride = {...SDE_PARAMS,
+  // N5 fix: memoized — was a plain object spread rebuilt every render,
+  // causing liveSDEParams in sendMessage to always be a new reference.
+  const liveSDEOverride = useMemo(()=>({...SDE_PARAMS,
     alpha:sdeAlphaOn?sdeAlphaVal:SDE_PARAMS.alpha,
     beta_p:sdeBetaOn?sdeBetaVal:SDE_PARAMS.beta_p,
-    sigma:sdeSigmaOn?sdeSigmaVal:SDE_PARAMS.sigma};
+    sigma:sdeSigmaOn?sdeSigmaVal:SDE_PARAMS.sigma,
+  }),[sdeAlphaOn,sdeAlphaVal,sdeBetaOn,sdeBetaVal,sdeSigmaOn,sdeSigmaVal]);
   const livePaths = useMemo(()=>simulateSDE(liveSDEOverride,20,.02,nPaths,42),[nPaths,sdeAlphaVal,sdeBetaVal,sdeSigmaVal,sdeAlphaOn,sdeBetaOn,sdeSigmaOn]);
   // active mute phrases — custom or default
   const activeMutePhrases = customMutePhrases ?? MUTE_PHRASES;
@@ -3567,9 +3609,11 @@ export default function HudsonPerryDriftV1() {
     navigator.clipboard.writeText(block).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);});
   };
 
-  const harnessChangeLog=coherenceData
+  // N6 fix: memoized — was .map().filter() on coherenceData every render.
+  const harnessChangeLog=useMemo(()=>coherenceData
     .map((d,i)=>({turn:i+1,mode:d.mode,active:d.harnessActive}))
-    .filter((d,i,arr)=>i===0||d.mode!==arr[i-1].mode);
+    .filter((d,i,arr)=>i===0||d.mode!==arr[i-1].mode),
+  [coherenceData]);
 
   // V1.
   const lockStatus=useMemo(()=>
@@ -3589,15 +3633,6 @@ export default function HudsonPerryDriftV1() {
     :smoothedVar>vDec?"⚠ DECOHERENCE"
     :smoothedVar>vCau?"△ CAUTION"
     :smoothedVar<vCal?"✓ CALM":"◆ NOMINAL";
-
-  const ScoreBadge=({score,kalman})=>{
-    const ref=kalman!=null?kalman:score;
-    const bg=ref>.70?"#E8F8EE":ref>.50?"#FFF8E8":"#FEEEEE";
-    const fg=ref>.70?THEME.green:ref>.50?THEME.orange:THEME.red;
-    return <span style={{fontFamily:"Courier New, monospace",fontSize:10,padding:"1px 7px",
-      borderRadius:3,background:bg,color:fg,border:`1px solid ${fg}33`,marginLeft:8,letterSpacing:1}}>
-      C={score.toFixed(3)}</span>;
-  };
 
   // ── V1.5.8 Context values — must be AFTER all useCallback declarations ──
   // sessionCtxValue includes toggleBookmark which is defined above.
@@ -3734,7 +3769,7 @@ export default function HudsonPerryDriftV1() {
       {/* HEADER */}
       <div style={S.header}>
         <div>
-          <div style={S.title}>HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.11</div>
+          <div style={S.title}>HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.12</div>
           <div style={S.subtitle}>
             © HUDSON &amp; PERRY RESEARCH · MUTE:{featMute?"ON":"OFF"} · GATE:{featGate?"ON":"OFF"} · PIPE:{featPipe?"ON":"OFF"} · REWIND:ON · V1.5.8
           </div>
@@ -3782,10 +3817,16 @@ export default function HudsonPerryDriftV1() {
           )}
           {rewindTurn!==null&&(
             <div style={{display:"flex",gap:4,alignItems:"center"}}>
-              <button onClick={()=>rewindTurn!==1?restoreToTurn(rewindTurn-1):null}
+              <button onClick={()=>{
+                  // N1 fix: compare against actual oldest turn in buffer, not hardcoded 1.
+                  // After turn 20 the buffer rolls — oldest may be turn 6, not turn 1.
+                  const minSnap=turnSnapshots[0]?.turn??1;
+                  if(rewindTurn!==minSnap) restoreToTurn(rewindTurn-1);
+                }}
                 style={{padding:"4px 10px",background:"#EEF8F2",border:"1px solid #40D08044",
                   borderRadius:4,color:"#178040",cursor:"pointer",
-                  fontSize:11,fontFamily:"Courier New, monospace",opacity:rewindTurn===1?0.3:1}}>
+                  fontSize:11,fontFamily:"Courier New, monospace",
+                  opacity:rewindTurn===(turnSnapshots[0]?.turn??1)?0.3:1}}>
                 prev
               </button>
               <button onClick={resumeLive} style={{padding:"6px 14px",background:"#E8F4EC",
@@ -3850,7 +3891,7 @@ export default function HudsonPerryDriftV1() {
                 // H2 fix: use researchNotesRef.current if available (uncontrolled textarea
                 // only updates state on blur — ref always has latest keystrokes)
                 const notes=researchNotesRef.current||researchNotes;
-                setExportContent(downloadResearch(coherenceData,eventLog,sessionId,userKappa,userAnchor,activePreset,notes));
+                setExportContent(downloadResearch(coherenceData,eventLog,sessionId,userKappa,userAnchor,activePreset,notes,cfg));
               }}>
               RESEARCH
             </button>
@@ -3927,7 +3968,7 @@ export default function HudsonPerryDriftV1() {
         <div style={{background:"#F8FAFC",borderBottom:"1px solid #1EAAAA44",padding:"12px 20px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <span style={{...S.sectionTitle,marginBottom:0,color:"#0A7878"}}>
-              MISSION PROTOCOL — HUDSON &amp; PERRY ARCHITECT V1.5.11
+              MISSION PROTOCOL — HUDSON &amp; PERRY ARCHITECT V1.5.12
             </span>
             <button style={{...S.exportBtn,background:copied?"#E4F4F4":"transparent",
               color:copied?"#178040":"#0A7878"}} onClick={handleCopyExport}>
@@ -3984,7 +4025,7 @@ export default function HudsonPerryDriftV1() {
               <div style={{margin:"auto",textAlign:"center",
                 fontFamily:"Courier New, monospace",fontSize:11,lineHeight:2}}>
                 <div style={{fontSize:28,marginBottom:12,opacity:.3}}>⬡</div>
-                <div style={{opacity:.5,marginBottom:4}}>HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.11</div>
+                <div style={{opacity:.5,marginBottom:4}}>HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.12</div>
                 <div style={{fontSize:9,letterSpacing:2,opacity:.4}}>
                   SDE · KALMAN · GARCH · TF-IDF · JSD · RAG · PIPE · MUTE · GATE · REWIND · ARCHITECT
                 </div>
