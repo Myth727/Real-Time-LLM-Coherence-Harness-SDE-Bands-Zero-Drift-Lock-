@@ -6,7 +6,7 @@ import {
 
 // ═══════════════════════════════════════════════════════════════
 //  FILE: ARCHITECT.jsx  ← upload to GitHub with this exact name (all caps)
-//  HUDSON & PERRY'S DRIFT LAW — ARCHITECT · V1.5.8
+//  HUDSON & PERRY'S DRIFT LAW — ARCHITECT · V1.5.11
 //  © Hudson & Perry Research
 //  Authors: David Hudson (@RaccoonStampede) · David Perry (@Prosperous727)
 //
@@ -444,17 +444,22 @@ function buildDriftGateInjection(smoothedVar,cfg) {
 // ═══════════════════════════════════════════════════════════════
 //  PIPING ENGINE
 // ═══════════════════════════════════════════════════════════════
-function buildPipeInjection(smoothedVar,kalmanX,kalmanP,calmStreak,driftCount,harnessMode,turn,hSignalCount,bSignalCount,adaptedSig) {
+function buildPipeInjection(smoothedVar,kalmanX,kalmanP,calmStreak,driftCount,harnessMode,turn,hSignalCount,bSignalCount,adaptedSig,cfg) {
   // No USE_PIPING guard — featPipe at the call site is the live gate.
+  // V1.5.9 fix #Grok-4: reads cfg.varDecoherence/varCaution/varCalm
+  // so pipe directives respond to preset thresholds, not hardcoded module constants.
   if (turn<2) return "";
-  const varState=smoothedVar>VAR_DECOHERENCE?"DECOHERENCE"
-    :smoothedVar>VAR_CAUTION?"CAUTION"
-    :smoothedVar<VAR_CALM?"CALM":"NOMINAL";
-  const directive=smoothedVar>VAR_DECOHERENCE
+  const vDec=cfg?.varDecoherence??VAR_DECOHERENCE;
+  const vCau=cfg?.varCaution??VAR_CAUTION;
+  const vCal=cfg?.varCalm??VAR_CALM;
+  const varState=smoothedVar>vDec?"DECOHERENCE"
+    :smoothedVar>vCau?"CAUTION"
+    :smoothedVar<vCal?"CALM":"NOMINAL";
+  const directive=smoothedVar>vDec
     ?`Re-align to Resonance Anchor ${RESONANCE_ANCHOR} Hz. One sentence only. No questions. No elaboration. Direct answer.`
-    :smoothedVar>VAR_CAUTION
+    :smoothedVar>vCau
     ?`Variance rising. Consolidate. Increase term persistence.`
-    :smoothedVar<VAR_CALM&&calmStreak>=3
+    :smoothedVar<vCal&&calmStreak>=3
     ?`Coherence stable. Maintain current density and terminology. One question maximum.`
     :`Answer directly. No unrequested content. Maximum one follow-up question.`;
   const hLine=hSignalCount>0
@@ -528,6 +533,8 @@ function downloadChat(messages, coherenceData, eventLog, sessionId, userKappa, u
     const turn=i+1;
     const status=d.raw>0.80?"✓ OK":d.raw>0.55?"△ WATCH":"⚠ DRIFT";
     const mode=d.mode?.toUpperCase()||"AUDIT";
+    // L1: use smoothedVar thresholds from module defaults for export
+    // (cfg not available here — export is session-level, thresholds may have changed mid-session)
     const flags=[
       d.harnessActive?"DRIFT":"",
       d.smoothedVar>VAR_DECOHERENCE?"DECOHERENCE":"",
@@ -680,7 +687,7 @@ function downloadSdePaths(livePaths, coherenceData, sessionId, nPaths, userKappa
 
 // ── System prompt ──────────────────────────────────────────────
 const BASE_SYSTEM =
-  `You are a highly precise technical assistant operating within Hudson & Perry's Drift Law ARCHITECT V1.5.8 coherence framework. `+
+  `You are a highly precise technical assistant operating within Hudson & Perry's Drift Law ARCHITECT V1.5.11 coherence framework. `+
   `Maintain strict logical consistency across all turns. Reference prior context explicitly when building on it. `+
   `When files are attached, analyze them thoroughly. `+
   `When RAG MEMORY is provided, treat it as recalled context. `+
@@ -719,9 +726,9 @@ function buildExportBlock(s) {
     :"  (empty)";
   const kappaNote=(userKappa??KAPPA)!==KAPPA?` ⚠ MODIFIED from 0.444`:"";
   const anchorNote=(userAnchor??RESONANCE_ANCHOR)!==RESONANCE_ANCHOR?` ⚠ MODIFIED from 623.81`:"";
-  return `START_MISSION_PROTOCOL: HUDSON_PERRY_DRIFT_ARCHITECT_V1.5.8
+  return `START_MISSION_PROTOCOL: HUDSON_PERRY_DRIFT_ARCHITECT_V1.5.11
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Hudson & Perry's Drift Law — ARCHITECT V1.5.8
+Hudson & Perry's Drift Law — ARCHITECT V1.5.11
 © Hudson & Perry Research
 ⚠ R&D ONLY — Proxy indicators, no warranty
 
@@ -973,13 +980,15 @@ function checkSelfContradiction(responseText, history) {
   return avgSim<0.15;
 }
 
-function assessHallucinationSignals(responseText, smoothedVar, attachments, history) {
+function assessHallucinationSignals(responseText, smoothedVar, attachments, history, cfg) {
   const confidenceHits=detectConfidenceLanguage(responseText);
   const sourceScore=checkSourceConsistency(responseText, attachments);
   const contradiction=checkSelfContradiction(responseText, history);
+  // M1 fix: use cfg.varCaution so MEDICAL preset's tighter threshold (0.090) applies
+  const vCau=cfg?.varCaution??VAR_CAUTION;
 
   const signals=[];
-  if (confidenceHits>=2&&smoothedVar>VAR_CAUTION) {
+  if (confidenceHits>=2&&smoothedVar>vCau) {
     signals.push(`high-confidence language (${confidenceHits} markers) with elevated variance`);
   }
   if (sourceScore!==null&&sourceScore<0.08) {
@@ -1021,7 +1030,7 @@ function computeSessionHealth(coherenceData, driftCount, smoothedVar, calmStreak
 const FRAMEWORK_CONTENT=`HUDSON & PERRY'S DRIFT LAW
 TIME-VARYING ERROR DYNAMICS & AI COHERENCE HARNESS
 Authors: David Hudson (@RaccoonStampede) & David Perry (@Prosperous727)
-Version 3.2  |  V1.5.8  |  © 2026
+Version 3.2  |  V1.5.11  |  © 2026
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1494,7 +1503,7 @@ const DisclaimerModal = React.memo(function DisclaimerModal({showDisclaimer,setS
         </div>
         <div style={{fontFamily:"Courier New, monospace",fontSize:8,
           color:"#4A6060",letterSpacing:1}}>
-          HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.8 · READ IN FULL BEFORE PROCEEDING
+          HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.11 · READ IN FULL BEFORE PROCEEDING
         </div>
       </div>
 
@@ -1565,7 +1574,7 @@ const DisclaimerModal = React.memo(function DisclaimerModal({showDisclaimer,setS
           color:"#2E5070",lineHeight:1.5}}>
           Proceeding confirms you have read and accepted all terms above.
         </span>
-        <button onClick={()=>setShowDisclaimer(false)}
+        <button
           style={{padding:"10px 24px",background:"#F0FFEE",
             border:"2px solid #9A5C08",borderRadius:4,color:"#9A5C08",
             cursor:"pointer",fontSize:10,fontFamily:"Courier New, monospace",
@@ -2022,10 +2031,15 @@ const TuneModal = React.memo(function TuneModal() {
             RESET ALL
           </button>
         </div>
-        <div style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#9A5C08",
-          marginBottom:10,padding:"4px 8px",background:"#FFF8EE",borderRadius:3,
-          border:"1px solid #E8A03033",lineHeight:1.6}}>
-          Coherence weights should sum to 1.0. Changes apply immediately to next turn.
+        <div style={{fontFamily:"Courier New,monospace",fontSize:7,
+          marginBottom:10,padding:"4px 8px",borderRadius:3,lineHeight:1.6,
+          background:(()=>{const s=mathTfidf+mathJsd+mathLen+mathStruct+mathPersist;return Math.abs(s-1.0)<0.01?"#EEFBF4":"#FFF8EE";})(),
+          border:(()=>{const s=mathTfidf+mathJsd+mathLen+mathStruct+mathPersist;return `1px solid ${Math.abs(s-1.0)<0.01?"#17804033":"#9A5C0844"}`;})(),
+          color:(()=>{const s=mathTfidf+mathJsd+mathLen+mathStruct+mathPersist;return Math.abs(s-1.0)<0.01?"#178040":"#9A5C08";})()}}>
+          Coherence weights Σ = {(mathTfidf+mathJsd+mathLen+mathStruct+mathPersist).toFixed(3)}
+          {Math.abs(mathTfidf+mathJsd+mathLen+mathStruct+mathPersist-1.0)<0.01
+            ?" ✓ (ideal — 1.000)"
+            :" ⚠ deviates from 1.0 — scores will shift. Weights are independent multipliers; sum of 1.0 is recommended but not required."}
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
           {[
@@ -2094,7 +2108,7 @@ const TuneModal = React.memo(function TuneModal() {
         display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <span style={{fontFamily:"Courier New, monospace",fontSize:8,
           color:"#2E5070",letterSpacing:1}}>
-          ACTIVE: {PRESETS[activePreset]?.label??activePreset} · κ={userKappa.toFixed(4)} · V1.5.8
+          ACTIVE: {PRESETS[activePreset]?.label??activePreset} · κ={userKappa.toFixed(4)} · V1.5.11
         </span>
         <button onClick={()=>setShowTuning(false)}
           style={{padding:"4px 14px",background:"#EEF8F2",
@@ -2562,7 +2576,7 @@ const BookmarksModal = React.memo(function BookmarksModal() {
         </span>
         <span style={{fontFamily:"Courier New, monospace",fontSize:8,
           color:"#2E5070",letterSpacing:1}}>
-          V1.5.8 © HUDSON &amp; PERRY
+          V1.5.11 © HUDSON &amp; PERRY
         </span>
       </div>
     </div>
@@ -2754,8 +2768,10 @@ export default function HudsonPerryDriftV1() {
 
   const chatEndRef=useRef(null);
   const inputRef=useRef(null);
-  // V1.
+  // V1.5.4: inputValueRef mirrors textarea — sendMessage reads this, not state
   const inputValueRef=useRef("");
+  // V1.5.9 fix #C: researchNotes converted to uncontrolled textarea
+  const researchNotesRef=useRef("");
   useEffect(()=>{
     if (rewindTurn===null) chatEndRef.current?.scrollIntoView({behavior:"smooth"});
   },[messages,rewindTurn]);
@@ -2855,7 +2871,11 @@ export default function HudsonPerryDriftV1() {
   // V1.5.3 fix #6: thread mathEpsilon so the user-tunable value actually propagates
   const cap_eff=driftLawCapEff(currentMode.gamma_h,mathEpsilon);
   // V1.5.0: active config — custom uses customConfig, others use PRESETS
-  const cfg = activePreset==="CUSTOM" ? customConfig : PRESETS[activePreset]??PRESETS.DEFAULT;
+  // V1.5.11: cfg memoized — was a plain object expression recomputed every render,
+  // producing a new reference each time and causing sendMessage to invalidate constantly.
+  const cfg = useMemo(()=>
+    activePreset==="CUSTOM" ? customConfig : PRESETS[activePreset]??PRESETS.DEFAULT,
+  [activePreset, customConfig]);
   // V1.5.0: live derived values from user-adjustable constants
   const liveDamping  = 1/(1+userKappa);
   const constantsModified = userKappa!==KAPPA || userAnchor!==RESONANCE_ANCHOR;
@@ -3015,7 +3035,8 @@ export default function HudsonPerryDriftV1() {
       const pipeInj=featPipe?buildPipeInjection(
         smoothedVar??0,kalmanState.x,kalmanState.P,
         calmStreak,driftCount,harnessMode,turn,hSignalCount,bSignalCount,
-        adaptiveSigmaOn?adaptedSigma:null
+        adaptiveSigmaOn?adaptedSigma:null,
+        cfg // V1.5.9: pass cfg so preset varCaution/Decoherence/Calm apply
       ):"";
       if (featPipe&&turn>=2)
         setLastPipeState({turn,var:(smoothedVar??0).toFixed(6),kalmanX:kalmanState.x.toFixed(4),calmStreak,driftCount,hSignalCount,bSignalCount});
@@ -3118,7 +3139,7 @@ export default function HudsonPerryDriftV1() {
       let hallucinationAssessment={flagged:false,signals:[],sourceScore:null,confidenceHits:0,contradiction:false};
       let behavioralAssessment={flagged:false,signals:[],questionCount:0,roleplays:0,sycophancies:0};
       try {
-        if (featHSig) hallucinationAssessment=assessHallucinationSignals(content_raw, smoothedVar??0, pending, newMessages);
+        if (featHSig) hallucinationAssessment=assessHallucinationSignals(content_raw, smoothedVar??0, pending, newMessages, cfg);
         if (featBSig) behavioralAssessment=assessBehavioralSignals(content_raw, text, newMessages);
       } catch(sigErr) {
         const now2=new Date().toISOString();
@@ -3421,6 +3442,8 @@ export default function HudsonPerryDriftV1() {
     }
   // V1.5.4 fix #7: `input` removed from dep array — now read via inputValueRef.
   // This was the single worst dep: it recreated the callback on every keystroke.
+  // hasInput intentionally NOT in deps — sendMessage reads inputValueRef.current,
+  // not hasInput. hasInput is UI-only (send button opacity/disabled). L2.
   },[attachments,messages,isLoading,kalmanState,harnessMode,
      driftCount,turnCount,apiKey,ragCache,coherenceData,
      scoreHistory,smoothedVar,calmStreak,lock888Achieved,turnSnapshots,
@@ -3554,14 +3577,18 @@ export default function HudsonPerryDriftV1() {
   [lastScore,userAnchor]);
   const apiKeyValid=apiKey.trim().startsWith("sk-");
   const contextPruned=messages.filter(m=>m.role==="assistant").length>PRUNE_THRESHOLD;
+  // M3 fix: use cfg preset thresholds so MEDICAL/CREATIVE etc. reflect correctly in UI
+  const vDec=cfg?.varDecoherence??VAR_DECOHERENCE;
+  const vCau=cfg?.varCaution??VAR_CAUTION;
+  const vCal=cfg?.varCalm??VAR_CALM;
   const varColor=smoothedVar===null?THEME.textFaint
-    :smoothedVar>VAR_DECOHERENCE?THEME.red
-    :smoothedVar>VAR_CAUTION?THEME.orange
-    :smoothedVar<VAR_CALM?THEME.green:THEME.blue;
+    :smoothedVar>vDec?THEME.red
+    :smoothedVar>vCau?THEME.orange
+    :smoothedVar<vCal?THEME.green:THEME.blue;
   const varLabel=smoothedVar===null?"—"
-    :smoothedVar>VAR_DECOHERENCE?"⚠ DECOHERENCE"
-    :smoothedVar>VAR_CAUTION?"△ CAUTION"
-    :smoothedVar<VAR_CALM?"✓ CALM":"◆ NOMINAL";
+    :smoothedVar>vDec?"⚠ DECOHERENCE"
+    :smoothedVar>vCau?"△ CAUTION"
+    :smoothedVar<vCal?"✓ CALM":"◆ NOMINAL";
 
   const ScoreBadge=({score,kalman})=>{
     const ref=kalman!=null?kalman:score;
@@ -3608,8 +3635,9 @@ export default function HudsonPerryDriftV1() {
   }),[exportContent,exportCopied,showLog,eventLog,errorLog,sessionId,corrections,
      showBookmarks,bookmarks,messages,coherenceData,toggleBookmark]);
 
-  // ── Styles ───────────────────────────────────────────────────
-  const S={
+  // V1.5.9 fix #D: S memoized — was a 62-line object literal rebuilt on every render.
+  // Only genuinely changes when harnessMode changes (currentMode.color is the sole dynamic dep).
+  const S=useMemo(()=>({
     root:{display:"flex",flexDirection:"column",height:"100vh",background:THEME.bgRoot,
       color:THEME.textPrimary,fontFamily:"'Trebuchet MS', sans-serif",fontSize:13,overflow:"hidden"},
     header:{display:"flex",alignItems:"center",justifyContent:"space-between",
@@ -3671,7 +3699,7 @@ export default function HudsonPerryDriftV1() {
       fontFamily:"Courier New, monospace",letterSpacing:1},
     loading:{display:"flex",gap:4,padding:"8px 14px"},
     dot:{width:6,height:6,borderRadius:"50%",background:THEME.teal,animation:"bounce 1.2s infinite"},
-  };
+  }),[harnessMode]); // only currentMode.color changes — depends solely on harnessMode
 
   // V1.5.5 fix #10: buildExportBlock calls applyZeroDriftLock internally.
   // Wrapped in useMemo — only recomputes when session state actually changes.
@@ -3706,7 +3734,7 @@ export default function HudsonPerryDriftV1() {
       {/* HEADER */}
       <div style={S.header}>
         <div>
-          <div style={S.title}>HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.8</div>
+          <div style={S.title}>HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.11</div>
           <div style={S.subtitle}>
             © HUDSON &amp; PERRY RESEARCH · MUTE:{featMute?"ON":"OFF"} · GATE:{featGate?"ON":"OFF"} · PIPE:{featPipe?"ON":"OFF"} · REWIND:ON · V1.5.8
           </div>
@@ -3766,11 +3794,16 @@ export default function HudsonPerryDriftV1() {
                 fontWeight:"bold",animation:"pipeGlow 1.5s infinite"}}>
                 T{rewindTurn} LIVE
               </button>
-              <button onClick={()=>rewindTurn!==turnSnapshots.length?restoreToTurn(rewindTurn+1):null}
+              <button onClick={()=>{
+                  // H1 fix: compare against the actual highest turn stored in buffer,
+                  // not turnSnapshots.length (always 20 after rolling cap kicks in).
+                  const maxSnap=turnSnapshots[turnSnapshots.length-1]?.turn??0;
+                  if(rewindTurn!==maxSnap) restoreToTurn(rewindTurn+1);
+                }}
                 style={{padding:"4px 10px",background:"#EEF8F2",border:"1px solid #40D08044",
                   borderRadius:4,color:"#178040",cursor:"pointer",
                   fontSize:11,fontFamily:"Courier New, monospace",
-                  opacity:rewindTurn===turnSnapshots.length?0.3:1}}>
+                  opacity:rewindTurn===(turnSnapshots[turnSnapshots.length-1]?.turn??0)?0.3:1}}>
                 next
               </button>
             </div>
@@ -3813,7 +3846,12 @@ export default function HudsonPerryDriftV1() {
           )}
           {coherenceData.length>0&&(
             <button style={{...S.logBtn,borderColor:"#8888FF44",color:"#4848B8"}}
-              onClick={()=>setExportContent(downloadResearch(coherenceData,eventLog,sessionId,userKappa,userAnchor,activePreset,researchNotes))}>
+              onClick={()=>{
+                // H2 fix: use researchNotesRef.current if available (uncontrolled textarea
+                // only updates state on blur — ref always has latest keystrokes)
+                const notes=researchNotesRef.current||researchNotes;
+                setExportContent(downloadResearch(coherenceData,eventLog,sessionId,userKappa,userAnchor,activePreset,notes));
+              }}>
               RESEARCH
             </button>
           )}
@@ -3857,15 +3895,15 @@ export default function HudsonPerryDriftV1() {
       {/* STATUS BAR */}
       {messages.length>0&&(()=>{
         const statusText=smoothedVar===null?"Session starting…"
-          :smoothedVar>VAR_DECOHERENCE?"⚠ HIGH VARIANCE — AI may be drifting or hallucinating"
-          :smoothedVar>VAR_CAUTION?"△ CAUTION — Variance rising, watch for off-topic responses"
+          :smoothedVar>vDec?"⚠ HIGH VARIANCE — AI may be drifting or hallucinating"
+          :smoothedVar>vCau?"△ CAUTION — Variance rising, watch for off-topic responses"
           :lock888Achieved&&(computeSessionHealth(coherenceData,driftCount,smoothedVar,calmStreak,lock888Achieved,cfg)??0)>=60?"🔒 FULLY STABLE — AI is consistent and on-task"
           :calmStreak>=3?"✓ STABLE — AI is coherent and on-task"
           :driftCount>4?"⚠ DRIFT DETECTED — Harness is correcting the AI"
           :"◆ MONITORING — Session looks normal";
         const barColor=smoothedVar===null?"#2E5070"
-          :smoothedVar>VAR_DECOHERENCE?"#C81030"
-          :smoothedVar>VAR_CAUTION?"#9A5C08"
+          :smoothedVar>vDec?"#C81030"
+          :smoothedVar>vCau?"#9A5C08"
           :lock888Achieved||calmStreak>=3?"#178040"
           :driftCount>4?"#9A5C08":"#1E3C5C";
         return (
@@ -3889,7 +3927,7 @@ export default function HudsonPerryDriftV1() {
         <div style={{background:"#F8FAFC",borderBottom:"1px solid #1EAAAA44",padding:"12px 20px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <span style={{...S.sectionTitle,marginBottom:0,color:"#0A7878"}}>
-              MISSION PROTOCOL — HUDSON &amp; PERRY ARCHITECT V1.5.8
+              MISSION PROTOCOL — HUDSON &amp; PERRY ARCHITECT V1.5.11
             </span>
             <button style={{...S.exportBtn,background:copied?"#E4F4F4":"transparent",
               color:copied?"#178040":"#0A7878"}} onClick={handleCopyExport}>
@@ -3909,10 +3947,22 @@ export default function HudsonPerryDriftV1() {
             <span style={{fontFamily:"Courier New, monospace",fontSize:9,
               color:"#906000",letterSpacing:2}}>RESEARCH NOTES — stamped on RESEARCH export</span>
             <span style={{fontFamily:"Courier New, monospace",fontSize:7,color:"#2E5070"}}>
-              {researchNotes.length} chars
+              {researchNotesRef.current.length||researchNotes.length} chars
             </span>
           </div>
-          <textarea value={researchNotes} onChange={e=>setResearchNotes(e.target.value)}
+          <textarea
+            ref={el=>{
+              if(el&&researchNotesRef.current!==el.value&&!el.dataset.initialized){
+                el.value=researchNotes;
+                researchNotesRef.current=researchNotes;
+                el.dataset.initialized="1";
+              }
+            }}
+            onInput={e=>{researchNotesRef.current=e.target.value;}}
+            onBlur={e=>{
+              // Only trigger state update (and storage save) on blur — not every keystroke
+              if(e.target.value!==researchNotes) setResearchNotes(e.target.value);
+            }}
             placeholder={"Hypothesis, custom SDE values, theory notes...\n\nExample: Testing α=-0.40 (aggressive mean-reversion). Expected: tighter Kalman bands."}
             style={{width:"100%",minHeight:110,background:"#EEF2F7",
               border:"1px solid #C8860A33",borderRadius:4,color:"#C8A060",
@@ -3934,7 +3984,7 @@ export default function HudsonPerryDriftV1() {
               <div style={{margin:"auto",textAlign:"center",
                 fontFamily:"Courier New, monospace",fontSize:11,lineHeight:2}}>
                 <div style={{fontSize:28,marginBottom:12,opacity:.3}}>⬡</div>
-                <div style={{opacity:.5,marginBottom:4}}>HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.8</div>
+                <div style={{opacity:.5,marginBottom:4}}>HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.11</div>
                 <div style={{fontSize:9,letterSpacing:2,opacity:.4}}>
                   SDE · KALMAN · GARCH · TF-IDF · JSD · RAG · PIPE · MUTE · GATE · REWIND · ARCHITECT
                 </div>
@@ -4134,7 +4184,21 @@ export default function HudsonPerryDriftV1() {
             </label>
             <textarea ref={inputRef} rows={2} style={S.textarea}
               placeholder={attachments.length?"Add message or send as-is…":"Message… (Enter to send)"}
-              onChange={e=>{inputValueRef.current=e.target.value;setHasInput(!!e.target.value);}} onKeyDown={handleKey}/>
+              onInput={e=>{
+                // V1.5.9 fix #B: onInput fires after DOM update (safer than onChange in iframes).
+                // Guard setHasInput — only fires when boolean actually changes,
+                // preventing re-renders on every mid-word keystroke.
+                const hasVal=e.target.value.length>0;
+                inputValueRef.current=e.target.value;
+                if(hasVal!==hasInput) setHasInput(hasVal);
+              }}
+              onCompositionEnd={e=>{
+                // Flush IME composition (CJK, iOS, etc.) — guarantees ref is current
+                inputValueRef.current=e.target.value;
+                const hasVal=e.target.value.length>0;
+                if(hasVal!==hasInput) setHasInput(hasVal);
+              }}
+              onKeyDown={handleKey}/>
             <button style={{...S.sendBtn,opacity:(isLoading||(!hasInput&&!attachments.length))?0.4:1}}
               onClick={sendMessage}
               disabled={isLoading||(!hasInput&&!attachments.length)}>SEND</button>
