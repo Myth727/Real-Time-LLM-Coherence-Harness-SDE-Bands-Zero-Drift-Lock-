@@ -6,7 +6,7 @@ import {
 
 // ═══════════════════════════════════════════════════════════════
 //  FILE: ARCHITECT.jsx  ← upload to GitHub with this exact name (all caps)
-//  HUDSON & PERRY'S DRIFT LAW — ARCHITECT · V1.5.13
+//  HUDSON & PERRY'S DRIFT LAW — ARCHITECT · V1.5.15
 //  © Hudson & Perry Research
 //  Authors: David Hudson (@RaccoonStampede) · David Perry (@Prosperous727)
 //
@@ -692,7 +692,7 @@ function downloadSdePaths(livePaths, coherenceData, sessionId, nPaths, userKappa
 
 // ── System prompt ──────────────────────────────────────────────
 const BASE_SYSTEM =
-  `You are a highly precise technical assistant operating within Hudson & Perry's Drift Law ARCHITECT V1.5.13 coherence framework. `+
+  `You are a highly precise technical assistant operating within Hudson & Perry's Drift Law ARCHITECT V1.5.15 coherence framework. `+
   `Maintain strict logical consistency across all turns. Reference prior context explicitly when building on it. `+
   `When files are attached, analyze them thoroughly. `+
   `When RAG MEMORY is provided, treat it as recalled context. `+
@@ -731,9 +731,9 @@ function buildExportBlock(s) {
     :"  (empty)";
   const kappaNote=(userKappa??KAPPA)!==KAPPA?` ⚠ MODIFIED from 0.444`:"";
   const anchorNote=(userAnchor??RESONANCE_ANCHOR)!==RESONANCE_ANCHOR?` ⚠ MODIFIED from 623.81`:"";
-  return `START_MISSION_PROTOCOL: HUDSON_PERRY_DRIFT_ARCHITECT_V1.5.13
+  return `START_MISSION_PROTOCOL: HUDSON_PERRY_DRIFT_ARCHITECT_V1.5.15
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Hudson & Perry's Drift Law — ARCHITECT V1.5.13
+Hudson & Perry's Drift Law — ARCHITECT V1.5.15
 © Hudson & Perry Research
 ⚠ R&D ONLY — Proxy indicators, no warranty
 
@@ -1035,7 +1035,7 @@ function computeSessionHealth(coherenceData, driftCount, smoothedVar, calmStreak
 const FRAMEWORK_CONTENT=`HUDSON & PERRY'S DRIFT LAW
 TIME-VARYING ERROR DYNAMICS & AI COHERENCE HARNESS
 Authors: David Hudson (@RaccoonStampede) & David Perry (@Prosperous727)
-Version 3.2  |  V1.5.13  |  © 2026
+Version 3.2  |  V1.5.15  |  © 2026
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1176,16 +1176,26 @@ VALIDATION STATUS
 
 CONFIRMED: SDE math ✓ | Kalman ✓ | GARCH ✓ | TF-IDF+JSD ✓
            Pipe injection ✓ | Behavioral detection ✓
+           Per-preset GARCH tuning ✓ | Epsilon parameterization ✓
+           Post-audit dual Kalman ✓ | React Context architecture ✓
+           Full cfg threading end-to-end ✓ | Math tunables persist ✓
+           External: Grok review 9.2/10, top 1% personal AI tooling
 
 REQUIRES VALIDATION: C-score vs. human judgment | H-signal
 false positive rate | 623.81 Hz physical anchor
 
-V1.5.0 ADDITIONS TO FRAMEWORK
-  SDE paths:  tunable 5–1000. Default 50. Chart bands scale with nPaths.
-  Post-audit: second coherence pass after generation. Delta logged.
-              Quiet fail = post-audit C < live C by > 0.08.
-  Health wts: per-preset penalty weights for drift, B-sig, H-sig events.
-  Mute edit:  custom phrase list, persisted via window.storage.
+V1.5.3–V1.5.14 ADDITIONS TO FRAMEWORK
+  GARCH preset tuning: per-preset omega/alpha/beta now applied.
+  Epsilon param: mathEpsilon wired to cap_eff, chart bands, MATH tab.
+  cfg threading: varCaution/Decoherence/Calm flow through pipe, gate,
+    signals, status bar, health scoring, CSV export end-to-end.
+  Typing fix: onInput+onCompositionEnd, guarded setHasInput.
+  Persistence: all math tunables, SDE params, post-audit threshold
+    now survive session reload via hpdl_config storage.
+  Rewind: prev/next buttons use actual buffer bounds (not length=20).
+  ScoreBadge, liveSDEOverride, cfg, harnessChangeLog, cap_eff,
+    contextPruned, S styles — all memoized.
+  Model string updated to claude-sonnet-4-6.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1195,7 +1205,7 @@ V1.5.0 ADDITIONS TO FRAMEWORK
 // ── Guide Content ──────────────────────────────────────────────
 const GUIDE_CONTENT=`HUDSON & PERRY'S DRIFT LAW — USER GUIDE
 How to Read the Graph · How to Detect Drift · How to Use the Harness
-Version 1.5.2  |  © 2026 David Hudson & David Perry
+Version 1.5.15  |  © 2026 David Hudson & David Perry
 
 This guide explains how to read the coherence graph, spot drift early,
 and use the automatic correction tools effectively.
@@ -1370,7 +1380,7 @@ A: Yes. CHAT downloads a clean text file with an audit table.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PART 8 — V1.5.0 NEW FEATURES
+PART 8 — V1.5.x ADDITIONS (V1.5.0 → V1.5.15)
 
 SDE PATH COUNT (TUNE → SDE SIMULATION PATHS)
   Default: 50 paths. Options: 5, 10, 20, 25, 50, 100, 200, 250, 300, 500.
@@ -1383,6 +1393,7 @@ POST-AUDIT (TUNE → POST-AUDIT)
   OFF      No second coherence pass.
   LIGHT    Fires only when Kalman x̂ < 0.70 (something already felt off).
   FULL     Every turn.
+  CUSTOM   User-set Kalman threshold.
   Both modes recompute rawC (TF-IDF+JSD+length), refresh sourceScore.
   If post-audit C drops more than 0.08 below live C = Quiet Fail.
   Quiet fails logged in LOG modal and RESEARCH CSV. Adds ~5-10% tokens.
@@ -1403,6 +1414,38 @@ HEALTH PENALTY WEIGHTS (TUNE → CUSTOM → Health weights)
   healthBSigWeight:  points deducted per B-Signal turn (default 4)
   healthHSigWeight:  points deducted per H-Signal turn (default 6)
   MEDICAL/LEGAL preset uses highest weights. CREATIVE uses lowest.
+
+MATH TAB TUNABLES (TUNE → MATH)
+  All five coherence weights (TF-IDF, JSD, Length, Structure, Persistence),
+  repetition threshold, Kalman R and SigmaP, RAG top-K, max tokens, and
+  epsilon ghost tax floor are all user-editable.
+  Live weight sum displayed — green ✓ at 1.000, amber ⚠ when off.
+  Weights are independent multipliers. Sum of 1.0 is recommended but
+  not enforced — the tool is for research, not locked systems.
+  All MATH tunables persist across session reloads (V1.5.13).
+
+INDUSTRY PRESETS (TUNE → PRESETS)
+  DEFAULT / TECHNICAL / CREATIVE / RESEARCH / MEDICAL / CUSTOM
+  Each preset tunes GARCH params, SDE params, variance thresholds,
+  word limits, health penalty weights, and drift escalation thresholds.
+  MEDICAL uses the tightest settings — lowest variance tolerance,
+  earliest H-signal detection, most aggressive escalation.
+  CREATIVE uses the loosest — expected topic shifts, longer responses.
+  Meta-harness: on CREATIVE/RESEARCH, if session health drops the
+  preset may auto-switch to TECHNICAL. MEDICAL and CUSTOM never
+  auto-switch.
+
+REWIND (click any chart dot, or use PREV / NEXT)
+  Restores full session state to any prior turn.
+  Buffer holds last 20 snapshots (rolls after turn 20).
+  PREV/NEXT navigate within the buffer. LIVE returns to present.
+  Chart turn dots are also clickable — prompts for confirmation.
+
+RESEARCH NOTES
+  Open via NOTES button in the header.
+  Free-form text stamped on every RESEARCH export.
+  Persists across session resets and reloads.
+  Notes are saved even if you close the tab without clicking away.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1508,7 +1551,7 @@ const DisclaimerModal = React.memo(function DisclaimerModal({showDisclaimer,setS
         </div>
         <div style={{fontFamily:"Courier New, monospace",fontSize:8,
           color:"#4A6060",letterSpacing:1}}>
-          HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.13 · READ IN FULL BEFORE PROCEEDING
+          HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.15 · READ IN FULL BEFORE PROCEEDING
         </div>
       </div>
 
@@ -2581,7 +2624,7 @@ const BookmarksModal = React.memo(function BookmarksModal() {
         </span>
         <span style={{fontFamily:"Courier New, monospace",fontSize:8,
           color:"#2E5070",letterSpacing:1}}>
-          V1.5.13 © HUDSON &amp; PERRY
+          V1.5.15 © HUDSON &amp; PERRY
         </span>
       </div>
     </div>
@@ -3151,7 +3194,7 @@ export default function HudsonPerryDriftV1() {
       const response=await fetch(API_ENDPOINT,{
         method:"POST",headers,
         body:JSON.stringify({
-          model:"claude-sonnet-4-20250514",
+          model:"claude-sonnet-4-6",
           max_tokens:maxTokens,
           system:systemPrompt,
           messages:apiMessages,
@@ -3797,9 +3840,9 @@ export default function HudsonPerryDriftV1() {
       {/* HEADER */}
       <div style={S.header}>
         <div>
-          <div style={S.title}>HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.13</div>
+          <div style={S.title}>HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.15</div>
           <div style={S.subtitle}>
-            © HUDSON &amp; PERRY RESEARCH · MUTE:{featMute?"ON":"OFF"} · GATE:{featGate?"ON":"OFF"} · PIPE:{featPipe?"ON":"OFF"} · REWIND:ON · V1.5.8
+            © HUDSON &amp; PERRY RESEARCH · MUTE:{featMute?"ON":"OFF"} · GATE:{featGate?"ON":"OFF"} · PIPE:{featPipe?"ON":"OFF"} · REWIND:ON · V1.5.15
           </div>
           <div style={{display:"flex",gap:10,marginTop:3}}>
             <a href="https://x.com/RaccoonStampede" target="_blank" rel="noreferrer"
@@ -3996,7 +4039,7 @@ export default function HudsonPerryDriftV1() {
         <div style={{background:"#F8FAFC",borderBottom:"1px solid #1EAAAA44",padding:"12px 20px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <span style={{...S.sectionTitle,marginBottom:0,color:"#0A7878"}}>
-              MISSION PROTOCOL — HUDSON &amp; PERRY ARCHITECT V1.5.13
+              MISSION PROTOCOL — HUDSON &amp; PERRY ARCHITECT V1.5.15
             </span>
             <button style={{...S.exportBtn,background:copied?"#E4F4F4":"transparent",
               color:copied?"#178040":"#0A7878"}} onClick={handleCopyExport}>
@@ -4053,7 +4096,7 @@ export default function HudsonPerryDriftV1() {
               <div style={{margin:"auto",textAlign:"center",
                 fontFamily:"Courier New, monospace",fontSize:11,lineHeight:2}}>
                 <div style={{fontSize:28,marginBottom:12,opacity:.3}}>⬡</div>
-                <div style={{opacity:.5,marginBottom:4}}>HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.13</div>
+                <div style={{opacity:.5,marginBottom:4}}>HUDSON &amp; PERRY'S DRIFT LAW · ARCHITECT V1.5.15</div>
                 <div style={{fontSize:9,letterSpacing:2,opacity:.4}}>
                   SDE · KALMAN · GARCH · TF-IDF · JSD · RAG · PIPE · MUTE · GATE · REWIND · ARCHITECT
                 </div>
