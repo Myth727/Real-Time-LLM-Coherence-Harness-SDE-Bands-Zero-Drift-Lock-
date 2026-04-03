@@ -1,7 +1,7 @@
 /**
  * HPDL SDK — PIPE, RAG, HEALTH, PRUNE
  * The control layer: u_drift(t) in practice.
- * Version 1.5.35
+ * Version 1.5.37
  *
  * Pipe injection = bounded corrective forcing injected into the system prompt.
  * It acts on system evolution (the AI's next response) without modifying
@@ -70,7 +70,7 @@ export function buildPipeInjection(state: PipeState): string {
     ? `\nσ_adapted=${state.adaptedSigma.toFixed(5)} (live EWMA) | damping=fixed`
     : '';
 
-  return `\n\n[SYSTEM_INTERNAL — HUDSON & PERRY PIPE | Turn ${state.turn}]`
+  return `\n\n[SYSTEM_INTERNAL — ARCHITECT PIPE | Turn ${state.turn}]`
     + `\nσ²=${state.smoothedVar.toFixed(6)} | State=${varState}`
     + `\nKalman x̂=${state.kalmanX.toFixed(4)} | P=${state.kalmanP.toFixed(5)}`
     + `\nCalm=${state.calmStreak} | Drift=${state.driftCount} | Mode=${state.harnessMode.toUpperCase()}`

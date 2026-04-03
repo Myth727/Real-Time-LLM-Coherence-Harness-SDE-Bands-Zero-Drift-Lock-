@@ -1,111 +1,129 @@
-# ARCHITECT — Real-Time AI Coherence Harness
+# ARCHITECT — Universal Coherence Engine
 
-## by Hudson \& Perry · Real-Time LLM Monitoring
+## Full-stack inference-time LLM stability layer
 
-**Version 1.5.35** · © 2026 Hudson & Perry Research
+**Version 1.5.37** · © 2026 Hudson & Perry Research
 **Authors:** David Hudson ([@RaccoonStampede](https://x.com/RaccoonStampede)) & David Perry ([@Prosperous727](https://x.com/Prosperous727))
 **License:** MIT
 
 > ⚠ RESEARCH & DEVELOPMENT — NOT FOR CLINICAL OR LEGAL USE.
 > All outputs are mathematical proxy indicators. No warranty expressed or implied.
 >
-> **Active development note:** This project is under continuous iteration. Some features — particularly those in the ⚗ Advanced tab — are experimental and may have rough edges. Mobile UI scrolling and certain toggle behaviors are known areas of ongoing improvement. If you encounter issues, the FEATURES and MATH tabs are fully functional on all devices.
+> **Active development:** Some features in the ⚗ Advanced tab are experimental and may have rough edges. The FEATURES, MATH, and DISPLAY tabs are stable on all devices.
 
 ---
 
-## ▶ Use it right now in Claude — 3 steps
+## ▶ Run it now — 3 steps
 
-The fastest way to run ARCHITECT is directly inside Claude as a single-file artifact. No installs, no setup.
+No install. No server. Runs as a single Claude artifact.
 
 **1. Download `ARCHITECT.jsx` from this repo**
 
 **2. Open [claude.ai](https://claude.ai) and start a new conversation**
 
-**3. Paste this message:**
+**3. Paste this:**
 
 ```
 Create an artifact from this file. Run it exactly as-is.
 [paste the full contents of ARCHITECT.jsx]
 ```
 
-That's it. The full coherence harness runs immediately in the artifact panel.
-
-> **Tip:** Open **TUNE** to pick an industry preset (TECHNICAL, CREATIVE, MEDICAL etc.), then start chatting. The harness monitors every response in real time.
+Open **TUNE** to select an industry preset, then start chatting. The engine monitors every response in real time.
 
 ---
 
-## What this is
+## What ARCHITECT does
 
-A real-time coherence monitoring engine for LLM conversations. Every response is scored with TF-IDF + Jensen-Shannon Divergence, tracked with a Kalman filter, modeled with GARCH(1,1) variance, and fed back as corrective directives before the next turn.
+Per-turn TF-IDF + Jensen-Shannon coherence scoring, Kalman-smoothed trajectory tracking, GARCH(1,1) variance modeling, Monte Carlo SDE uncertainty bands, post-audit loop, behavioral and hallucination signal detection, and automatic corrective pipe injection — all running client-side in a single React artifact with no external dependencies.
 
-**What's confirmed and validated:**
+Every response is scored, modeled, and fed back as corrective directives before the next turn. Drift is detected at three escalation levels. The harness adapts to your workflow via seven industry presets.
 
-- **Kalman filter** — time-varying, κ-damped trajectory smoothing
-- **GARCH(1,1) variance** — volatility clustering, per-preset tunable
-- **TF-IDF + JSD coherence scoring** — 5-component weighted scoring
-- **Pipe injection** — corrective directives fed into every system prompt
-- **Behavioral signal detection** — 6 proxies (sycophancy, hype, topic hijack, etc.)
-- **Hallucination signal detection** — 3 proxies with preset-aware thresholds
-- **Session health** — 0–100 composite score with per-preset penalty weights
-- **Industry presets** — DEFAULT / TECHNICAL / CREATIVE / RESEARCH / MEDICAL / CUSTOM
-- **RAG memory** — retrieve-augment from session history
-- **Rewind** — restore any prior session state from a 20-turn buffer
-- **Research export** — CSV + JSONL per-turn metrics for offline analysis
+---
 
-**Advanced / experimental (opt-in, clearly labeled):**
+## Validated Features
 
-- Alternative SDE models: CIR (Cox-Ingersoll-Ross), Heston stochastic volatility
-- Custom Rails — user-defined behavioral guidelines injected into every prompt
-- Additional experimental math parameters
+| Feature | Description |
+|---------|-------------|
+| **Kalman Filter** | Time-varying smoothed coherence trajectory — most reliable signal |
+| **GARCH(1,1) Variance** | Volatility clustering across sessions. Per-preset omega/alpha/beta |
+| **TF-IDF + JSD Scoring** | 5-component weighted coherence score. All weights tunable |
+| **Monte Carlo SDE Bands** | 50-path OU ensemble defines uncertainty band on chart |
+| **SDE Path Visualization** | Live ensemble paths rendered on chart. Opacity tunable |
+| **Post-Audit Loop** | Second coherence pass (LIGHT / FULL / CUSTOM threshold) |
+| **Pipe Injection** | Corrective directives in every system prompt automatically |
+| **Drift Gate** | Word-limit clamp at moderate/deep/extreme drift levels |
+| **Mute Mode** | Token-cap trigger on high-variance or signal-heavy responses |
+| **Behavioral Detection** | 6 proxies: sycophancy, hype, topic hijack, flooding, roleplay, elaboration |
+| **Hallucination Detection** | 3 proxies with preset-aware thresholds |
+| **Session Health** | 0–100 composite score with per-preset penalty weights |
+| **Context Pruning** | Auto-trim context at threshold, keep most recent turns |
+| **RAG Memory** | Retrieve-augment from session history, configurable top-K |
+| **Session Rewind** | Restore any prior state from 20-turn rolling buffer |
+| **Circuit Signal** | Live full adder pass rate from Poole CA Sim in sidebar |
+| **Research Export** | CSV + JSONL per-turn metrics for offline analysis |
 
-Advanced features are behind an explicit unlock gate in TUNE → ⚗ ADVANCED. They are labeled as experimental and unvalidated.
+---
+
+## Industry Presets
+
+| Preset | Variance Tolerance | Best For |
+|--------|-------------------|----------|
+| DEFAULT | 0.200 / 0.120 / 0.080 | General use |
+| TECHNICAL | 0.180 / 0.100 / 0.060 | Code, audits, engineering |
+| CREATIVE | 0.280 / 0.160 / 0.100 | Writing, brainstorming |
+| RESEARCH | 0.220 / 0.130 / 0.085 | Academic, long-form analysis |
+| MEDICAL | 0.150 / 0.090 / 0.055 | High-stakes clinical/legal |
+| **CIRCUIT** | **0.140 / 0.080 / 0.050** | **Logic verification, cascading reasoning** |
+| CUSTOM | user-defined | Fully configurable |
+
+Variance columns: decoherence / caution / calm thresholds.
+CIRCUIT has the tightest settings of all presets — below even MEDICAL — built for logic verification workflows where AI reasoning chains must stay maximally consistent.
+
+---
+
+## Advanced / Experimental (opt-in, consent required)
+
+All features below are behind an explicit unlock gate in **TUNE → ⚗ ADVANCED**. Labeled experimental. Not used in standard coherence scoring.
+
+- **Alt SDE Models** — CIR (Cox-Ingersoll-Ross) or Heston stochastic volatility instead of HPDL OU
+- **Custom Rails** — plain-language behavioral guidelines injected into every prompt
+- **Stability Panel** — convergence sidebar tracking attractor math
+- **Edit Constants** — tune the damping constant and stability anchor
+- **MHT Study** — Metatron-Hudson Theory SDE: Robitaille Helix invariants, H_drift annihilator, DATL Heartbeat
+- **Poole Manifold CA Sim** — 3D cellular automaton (B:5-7/S:5-9 default), live canvas, full adder 8/8 truth table
 
 ---
 
 ## Repository structure — a note
 
-> This repo is actively being organized. The TypeScript SDK files (`constants.ts`, `coherence.ts`, `drift.ts`, `engine.ts`, `signals.ts`, `sde.ts`, `storage.ts`, `index.ts`) are currently in the root of the main branch rather than in a proper `/sdk` folder. This is a known structural issue and will be corrected in an upcoming reorganization. Apologies for the messiness — this project was built collaboratively and iteratively, and GitHub organization is still catching up with the pace of development.
-
-The core tool — `ARCHITECT.jsx` — is always current and fully functional regardless of SDK folder structure.
+> This repo is actively being organized. The TypeScript SDK files are currently in the root of the main branch rather than in a `/sdk` folder — a known structural issue being corrected soon. `ARCHITECT.jsx` is always current and fully functional regardless of SDK folder structure.
 
 ---
 
-## ARCHITECT V1.5.35 — What's New
+## What's New — V1.5.37
 
-- **CIRCUIT Preset** — new industry preset tuned for logic verification and cascading AI reasoning chains. Tightest variance tolerance, most aggressive drift escalation.
-- **Poole Manifold CA Simulator** — 3D cellular automaton in Advanced tab. Adjustable B/S params, live canvas, full adder truth table (8/8 Turing completeness verification).
-- **Circuit Signal** — live full adder pass rate shown in the metrics sidebar when Poole CA is active.
-- **SDE Path Visualization** — toggle to render faint OU ensemble paths on the coherence chart. Opacity control in DISPLAY tab. Color matches active preset.
-- **MHT Study Module** — Metatron-Hudson Theory SDE study panel in Advanced tab. Robitaille Helix invariants, H_drift annihilator params, live computed values.
-- **DATL Heartbeat** — N(t) scar-swarm and Δ_heartbeat live display in MHT section.
-- **Advanced Tab fully functional** — five independent feature toggles (Alt SDE, Custom Rails, Stability Panel, Edit Constants, MHT Study, Poole CA Sim). Each config section appears only when its toggle is on.
-- **MessageBubble memoized** — React.memo with custom equality. Previous messages no longer re-render on every keystroke or streaming token.
-- **Mobile scroll fixed** — TUNE modal scroll container now wraps all tabs correctly. Range inputs replaced with number inputs in Advanced tab (Android WebView compatibility).
-- **All pseudoscience/experimental framing** hidden behind Advanced tab consent gate. Standard UI is clean and credible.
+- **API prefill bug fixed** — deep/extreme drift mode could produce an apiMessages array ending with `role:"assistant"`, causing a fatal API error. Now strips trailing assistant messages before every API call.
+- **JSX Babel fixes** — template literals in two JSX attributes replaced with string concatenation.
+- **pooleGen persisted** — CA generator counter now survives session reload.
 
-See `CHANGELOG.md` for the complete version history (V1.3 → V1.5.35).
+See `CHANGELOG.md` for the complete version history (V1.3 → V1.5.37).
 
 ---
 
 ## SDK (TypeScript)
 
-The math functions are also available as a standalone TypeScript package with no UI dependencies. See the `.ts` files in the root (to be reorganized into `/sdk` soon).
+The math functions are available as a standalone TypeScript package with no UI dependencies.
 
 ```bash
-# Not yet published to npm — clone and build locally
-git clone https://github.com/Myth727/Real-Time-LLM-Coherence-Harness-SDE-Bands-Zero-Drift-Lock-
+git clone https://github.com/Myth727/ARCHITECT-Universal-Coherence-Engine
 npm install && npm run build
 ```
-
----
-
-## SDK Quick Start
 
 ```typescript
 import { computeCoherence, kalmanStep, updateSmoothedVariance,
          buildPipeInjection, PRESETS } from './index';
 
-const cfg    = PRESETS.TECHNICAL;
+const cfg    = PRESETS.CIRCUIT;
 const score  = computeCoherence(response, history);
 const newVar = updateSmoothedVariance(scoreHistory, prev, cfg);
 const kalman = kalmanStep(state, score, turn * (2*Math.PI/12), SDE_PARAMS);
@@ -114,24 +132,25 @@ const pipe   = buildPipeInjection(newVar, kalman.x, kalman.P,
 const systemPrompt = basePrompt + pipe;
 ```
 
+**SDK files:** `constants.ts` · `coherence.ts` · `drift.ts` · `engine.ts` · `signals.ts` · `sde.ts` · `storage.ts` · `index.ts`
+
 ---
 
 ## Core Constants
 
 ```typescript
-EPSILON  // 0.05   — minimum coherence floor assumption
-DAMPING  // 0.6925 — controls response smoothing in Kalman and SDE
+EPSILON  // 0.05   — minimum coherence floor
+DAMPING  // 0.6925 — smoothing coefficient (1/(1+κ))
 ```
 
-> Advanced users can access and modify additional framework constants via **TUNE → ⚗ ADVANCED**. Modifying defaults operates outside the validated configuration.
+Advanced users can modify additional framework constants via **TUNE → ⚗ ADVANCED**. Non-default values operate outside the validated configuration.
 
 ---
 
 ## Citation
 
 ```
-Perry, D. & Hudson, D. (2026). ARCHITECT: Real-Time AI Coherence Harness.
-Hudson & Perry Research. @RaccoonStampede · @Prosperous727
+Perry, D. & Hudson, D. (2026). ARCHITECT: Universal Coherence Engine.
 Hudson & Perry Research. @RaccoonStampede · @Prosperous727
 ```
 

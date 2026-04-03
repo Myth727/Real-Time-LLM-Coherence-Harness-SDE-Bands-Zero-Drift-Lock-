@@ -1,7 +1,26 @@
 # ARCHITECT — Full Changelog
-**Hudson & Perry's Drift Law**
+**ARCHITECT — Universal Coherence Engine**
 © 2026 Hudson & Perry Research
 𝕏 @RaccoonStampede (David Hudson) · 𝕏 @Prosperous727 (David Perry)
+
+## V1.5.37
+- Config save useEffect dep array: added 8 missing dependencies — showSdePaths, pathOpacity, caPassRate, pooleBirth1, pooleBirth2, pooleSurv1, pooleSurv2, pooleGen. Changes to Display tab opacity and Poole CA params now correctly trigger hpdl_config persistence without requiring an unrelated state change.
+- tuneCtxValue useMemo dep array: added 16 missing dependencies — showMhtStudy, all 8 MHT params (mhtPsi, mhtKappa, mhtTau, mhtGamma, mhtCap, mhtAlpha, mhtBeta, mhtSigma), showPoole, all 5 Poole params (pooleBirth1/2, pooleSurv1/2, pooleGen), caPassRate. TuneModal now re-renders correctly when Advanced tab params change.
+- UI text duplication fixed: "consider reset or prune" appeared twice in token warning string at L5070.
+- SDK constants.ts: added missing exports MUTE_PHRASES (string[]), PRUNE_THRESHOLD (8), PRUNE_KEEP (5) — engine.ts imports these and TypeScript compilation was failing. Resolves Issue #3 (teknium1/NousResearch).
+- SDK engine.ts: pipe injection header renamed from "HUDSON & PERRY PIPE" to "ARCHITECT PIPE" — consistent with ARCHITECT.jsx L486.
+- SDK index.ts: quick-start buildPipeInjection example updated to PipeState object signature, replacing stale positional argument form.
+- All version strings bumped to V1.5.37.
+
+---
+
+## V1.5.36
+- CRITICAL BUG FIX: "This model does not support assistant message prefill" error. After drift escalation to deep/extreme mode, needsHardTrim slicing could produce an apiMessages array ending with role:"assistant" (common after deleteTurn or rewind). Fix: strip trailing assistant messages from trimmedSafe before building apiMessages. Fallback: if all messages are non-user, send as-is.
+- Template literals in JSX attributes fixed: L2139 Reset button title and L4814 MessageBubble key — replaced with string concatenation for Babel artifact compatibility.
+- pooleGen added to hpdl_config save block — was missing, causing CA gen counter to reset on reload.
+- All V1.5.35 version strings in rendered content bumped to V1.5.36.
+
+---
 
 ## V1.5.35
 - CIRCUIT preset added to PRESETS. Tightest variance tolerance of any preset (varDecoherence 0.140, below MEDICAL). Most aggressive drift escalation (2/4/6). Highest health penalty weights (14/7/12). Built for logic verification and cascading AI reasoning chains. Appears in TUNE → PRESETS alongside DEFAULT/TECHNICAL/CREATIVE/RESEARCH/MEDICAL/CUSTOM.
@@ -99,7 +118,7 @@
 - Zero-Drift Display toggle removed from FEATURES tab — moved to ADVANCED tab as opt-in, default OFF (featZeroDrift now defaults false).
 - κ/ANCHOR MODIFIED header warning removed — these constants are Advanced-only, no header indicator needed.
 - Stability Convergence toggle added inside Advanced tab with explanatory note.
-- README title changed from Hudson & Perry's Drift Law — ARCHITECT to ARCHITECT — Real-Time AI Coherence Harness.
+- README title changed from ARCHITECT — Universal Coherence Engine — ARCHITECT to ARCHITECT — Universal Coherence Engine.
 - README SDK constants block simplified — KAPPA/RESONANCE_ANCHOR/ghost tax removed, replaced with neutral EPSILON/DAMPING descriptions.
 - README citation updated to neutral framing.
 

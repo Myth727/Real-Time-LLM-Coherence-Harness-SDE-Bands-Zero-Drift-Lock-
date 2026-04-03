@@ -2,7 +2,7 @@
  * ARCHITECT — Core Constants & Presets
  * © 2026 Hudson & Perry Research
  * @RaccoonStampede · @Prosperous727
- * Version 1.5.35
+ * Version 1.5.37
  *
  * All constants used by the coherence scoring, Kalman filter, GARCH
  * variance model, SDE drift bands, and pipe injection engine.
@@ -65,6 +65,18 @@ export const NORMAL_MAX_TOKENS     = 1000; // Standard response token budget
 export const MUTE_MAX_TOKENS       = 120;  // Token cap when mute mode is active
 export const DRIFT_GATE_WORD_LIMIT = 120;  // Word limit when drift gate fires
 export const RAG_TOP_K             = 3;    // RAG retrieval: top-K results
+export const PRUNE_THRESHOLD       = 8;    // Prune context when assistant turns exceed this
+export const PRUNE_KEEP            = 5;    // Top-K coherent pairs to keep after pruning
+
+// ── Mute Phrases — START-OF-MESSAGE triggers only ────────────────
+// Matched against the trimmed lowercase start of the user message.
+// engine.ts detectMuteMode uses these as the default phrase list.
+export const MUTE_PHRASES: string[] = [
+  'how do i ',     'what should i',  'walk me through',
+  'give me a plan','outline the steps','what are the steps',
+  'step by step',  'list the steps', 'can you plan',
+  'create a roadmap','make a roadmap',
+];
 
 // ── Preset Configuration Type ────────────────────────────────────
 export interface PresetConfig {

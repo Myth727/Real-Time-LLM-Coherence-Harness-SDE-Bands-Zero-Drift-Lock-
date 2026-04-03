@@ -1,17 +1,17 @@
-# Hudson & Perry's Drift Law — Framework Document
+# ARCHITECT — Universal Coherence Engine · Framework Document
 
-**Version 3.6 | V1.5.35 | © 2026 Hudson & Perry Research**
+**Version 3.6 | V1.5.37 | © 2026 Hudson & Perry Research**
 David Hudson (@RaccoonStampede) & David Perry (@Prosperous727)
 
 ---
 
 ## Overview
 
-Three connected tools sharing the damping constant κ = 0.444:
+Three integrated layers sharing the damping constant κ = 0.444:
 
 1. **SDE Model** — tracks error dynamics over time
 2. **Drift Law** — macro inefficiency auditor
-3. **AI Coherence Harness (ARCHITECT)** — live implementation
+3. **AI Coherence Engine (ARCHITECT)** — live implementation
 
 ---
 

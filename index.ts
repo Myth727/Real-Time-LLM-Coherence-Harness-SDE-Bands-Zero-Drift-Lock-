@@ -1,6 +1,6 @@
 /**
- * HUDSON & PERRY DRIFT LAW — SDK
- * Version 1.5.35
+ * ARCHITECT — UNIVERSAL COHERENCE ENGINE — SDK
+ * Version 1.5.37
  *
  * © 2026 Hudson & Perry Research
  * Authors: David Hudson (@RaccoonStampede) & David Perry (@Prosperous727)
@@ -13,8 +13,11 @@
  *   const score  = computeCoherence(response, history);
  *   const newVar = updateSmoothedVariance(scoreHistory, prev, cfg);
  *   const kalman = kalmanStep(state, score, turn * (2*Math.PI/12), SDE_PARAMS);
- *   const pipe   = buildPipeInjection(newVar, kalman.x, kalman.P,
- *                    calmStreak, driftCount, 'audit', turn, 0, 0, null, cfg);
+ *   const pipe   = buildPipeInjection({
+ *                    smoothedVar: newVar, kalmanX: kalman.x, kalmanP: kalman.P,
+ *                    calmStreak, driftCount, harnessMode: 'audit', turn,
+ *                    hSignalCount: 0, bSignalCount: 0, adaptedSigma: null,
+ *                  });
  *
  * cfg threading (V1.5.9-V1.5.13):
  *   All key functions accept an optional Partial<PresetConfig> as their last
