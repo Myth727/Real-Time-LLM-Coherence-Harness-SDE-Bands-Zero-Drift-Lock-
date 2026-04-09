@@ -2,7 +2,7 @@
 
 ## Full-stack inference-time LLM stability layer
 
-**Version 1.5.38** · © 2026 Hudson & Perry Research
+**Version 1.5.39** · © 2026 Hudson & Perry Research
 **Authors:** David Hudson ([@RaccoonStampede](https://x.com/RaccoonStampede)) & David Perry ([@Prosperous727](https://x.com/Prosperous727))
 **License:** MIT
 
@@ -100,13 +100,13 @@ All features below are behind an explicit unlock gate in **TUNE → ⚗ ADVANCED
 
 ---
 
-## What's New — V1.5.38
+## What's New — V1.5.39
 
 - **API prefill bug fixed** — deep/extreme drift mode could produce an apiMessages array ending with `role:"assistant"`, causing a fatal API error. Now strips trailing assistant messages before every API call.
 - **JSX Babel fixes** — template literals in two JSX attributes replaced with string concatenation.
 - **pooleGen persisted** — CA generator counter now survives session reload.
 
-See `CHANGELOG.md` for the complete version history (V1.3 → V1.5.38).
+See `CHANGELOG.md` for the complete version history (V1.3 → V1.5.39).
 
 ---
 

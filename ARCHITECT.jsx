@@ -6,7 +6,7 @@ import {
 
 // ═══════════════════════════════════════════════════════════════
 //  FILE: ARCHITECT.jsx
-//  ARCHITECT — UNIVERSAL COHERENCE ENGINE · V1.5.38
+//  ARCHITECT — UNIVERSAL COHERENCE ENGINE · V1.5.39
 //  © Hudson & Perry Research
 //  Authors: David Hudson (@RaccoonStampede) · David Perry (@Prosperous727)
 //
@@ -137,7 +137,22 @@ const KALMAN_SIGMA_P   = 0.06;
 const LOCK_888         = 0.888;
 const HC_MASS_LOSS     = KAPPA; // P11: was 0.444 literal — aliased to KAPPA (same value, single source of truth)
 
-const SDE_PARAMS = {alpha:-0.25,beta_p:0.18,omega:2*Math.PI/12,sigma:0.10,kappa:KAPPA};
+// ── Jump-diffusion constants (Merton 1976) ─────────────────────
+// Sudden topic shifts in conversations are jump processes, not smooth drift.
+// JUMP_INTENSITY: expected jumps per step (λ). JUMP_MAGNITUDE: abs jump size.
+const JUMP_INTENSITY = 0.05;
+const JUMP_MAGNITUDE = 0.12;
+
+// delta: GARCH-in-Mean coupling coefficient (Engle, Lilien & Robins 1987).
+// When variance is high, delta subtracts from the drift term — SDE is pushed
+// toward mean reversion harder under volatile sessions. Couples GARCH and SDE
+// into a single coherent system rather than two parallel independent models.
+const SDE_DELTA = 0.30;
+
+const SDE_PARAMS = {
+  alpha:-0.25, beta_p:0.18, omega:2*Math.PI/12, sigma:0.10, kappa:KAPPA,
+  delta:SDE_DELTA, jumpIntensity:JUMP_INTENSITY, jumpMagnitude:JUMP_MAGNITUDE,
+};
 
 const HARNESS_MODES = {
   audit:    {gamma_h:0.05,   label:"AUDIT",      color:"#906000",threshold:1.1 },
@@ -157,14 +172,27 @@ function randn(rng) {
 }
 
 // ── SDE ────────────────────────────────────────────────────────
+// V1.5.39: GARCH-in-Mean — delta term couples variance into drift.
+// V1.5.39: Jump-diffusion (Merton 1976) — Poisson jump process models
+// sudden topic shifts which are discontinuous, not smooth drift.
 function simulateSDE(params,T,dt=0.02,nPaths=50,seed=42) {
-  const {alpha,beta_p,omega,sigma,kappa}=params;
+  const {alpha,beta_p,omega,sigma,kappa,delta=0,jumpIntensity=0,jumpMagnitude=0}=params;
   const lam=1/(1+kappa),nSteps=Math.ceil(T/dt),rng=makeRng(seed),paths=[];
+  let runVar=0; // running variance estimate for GARCH-in-Mean
+  const jumpProb=1-Math.exp(-(jumpIntensity||0)*dt);
   for (let p=0;p<nPaths;p++) {
     const path=new Float32Array(nSteps+1);path[0]=0;
     for (let i=1;i<=nSteps;i++) {
-      const t=i*dt,a_t=lam*(alpha+beta_p*Math.sin(omega*t)),b=lam*sigma;
-      path[i]=path[i-1]+a_t*path[i-1]*dt+b*Math.sqrt(dt)*randn(rng);
+      const t=i*dt;
+      // GARCH-in-Mean: subtract delta*variance from drift — higher variance → stronger reversion
+      const a_t=lam*(alpha+beta_p*Math.sin(omega*t)-(delta||0)*runVar);
+      const b=lam*sigma;
+      const noise=b*Math.sqrt(dt)*randn(rng);
+      // Jump term: Poisson arrivals with signed random magnitude
+      const jump=rng()<jumpProb?((rng()>0.5?1:-1)*(jumpMagnitude||0)):0;
+      path[i]=path[i-1]+a_t*path[i-1]*dt+noise+jump;
+      // Update running variance for GARCH-in-Mean (simple EWM)
+      runVar=0.85*runVar+0.15*Math.pow(path[i]-path[i-1],2);
     }
     paths.push(path);
   }
@@ -177,9 +205,15 @@ function sdePercentilesAtStep(paths,step) {
 }
 
 // ── Kalman ─────────────────────────────────────────────────────
-function kalmanStep(state,obs,t,params,kalR,kalSigP) {
-  const {alpha,beta_p,omega,kappa}=params;
-  const lam=1/(1+kappa),a_t=lam*(alpha+beta_p*Math.sin(omega*t)),F=1+a_t;
+// V1.5.39: GARCH-in-Mean coupling — smoothedVar (optional, default 0) is
+// subtracted from the drift term via delta. When variance is high, the
+// process model predicts stronger mean reversion, tightening the estimate.
+// Couples the Kalman process model with the GARCH variance output.
+function kalmanStep(state,obs,t,params,kalR,kalSigP,smoothedVar=0) {
+  const {alpha,beta_p,omega,kappa,delta=0}=params;
+  const lam=1/(1+kappa);
+  const a_t=lam*(alpha+beta_p*Math.sin(omega*t)-(delta||0)*(smoothedVar||0));
+  const F=1+a_t;
   const Q=Math.pow((kalSigP??KALMAN_SIGMA_P)*lam,2),x_p=F*state.x,P_p=F*F*state.P+Q,K=P_p/(P_p+(kalR??KALMAN_R));
   return {x:x_p+K*(obs-x_p),P:(1-K)*P_p};
 }
@@ -342,7 +376,7 @@ function buildTermFreq(tokens) {
   return dist;
 }
 
-// V1.5.38 fix: smoothed IDF — previous formula log(2/df) zeroed shared terms,
+// V1.5.39 fix: smoothed IDF — previous formula log(2/df) zeroed shared terms,
 // making the dot product always 0 and tfidfSimilarity always return 0.
 // Root cause: terms in both docs → IDF=log(1)=0; terms in one doc only → other
 // doc has tf=0, so dot contribution is 0 either way. Function was constant 0.
@@ -502,8 +536,12 @@ function buildRagEntry(content,score,turn) {
 function ragRetrieve(query,cache,k=RAG_TOP_K) {
   if (!cache.length||!query?.trim()) return [];
   const qt=tokenize(query);
+  // V1.5.39: threshold raised from 0.05 to 0.15 — calibrated for smoothed IDF
+  // (V1.5.39 fix). Old threshold was set against broken TF-IDF that always
+  // returned 0. With working similarity, 0.05 is too loose and retrieves
+  // marginally-related turns. 0.15 requires meaningful term overlap.
   return cache.map(e=>({...e,sim:tfidfSimilarity(qt,e.tokens)}))
-    .sort((a,b)=>b.sim-a.sim).slice(0,k).filter(e=>e.sim>.05);
+    .sort((a,b)=>b.sim-a.sim).slice(0,k).filter(e=>e.sim>.15);
 }
 function formatRagContext(retrieved) {
   if (!retrieved.length) return "";
@@ -704,7 +742,7 @@ function downloadSdePaths(livePaths, coherenceData, sessionId, nPaths, userKappa
 
 // ── System prompt ──────────────────────────────────────────────
 const BASE_SYSTEM =
-  `You are a highly precise technical assistant operating within ARCHITECT V1.5.38, a real-time AI coherence engine. `+
+  `You are a highly precise technical assistant operating within ARCHITECT V1.5.39, a real-time AI coherence engine. `+
   `Maintain strict logical consistency across all turns. Reference prior context explicitly when building on it. `+
   `When files are attached, analyze them thoroughly. `+
   `When RAG MEMORY is provided, treat it as recalled context. `+
@@ -743,9 +781,9 @@ function buildExportBlock(s) {
     :"  (empty)";
   const kappaNote=(userKappa??KAPPA)!==KAPPA?` ⚠ MODIFIED from 0.444`:"";
   const anchorNote=(userAnchor??RESONANCE_ANCHOR)!==RESONANCE_ANCHOR?` ⚠ MODIFIED from 623.81`:"";
-  return `START_MISSION_PROTOCOL: HUDSON_PERRY_DRIFT_ARCHITECT_V1.5.38
+  return `START_MISSION_PROTOCOL: HUDSON_PERRY_DRIFT_ARCHITECT_V1.5.39
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ARCHITECT — Universal Coherence Engine V1.5.38
+ARCHITECT — Universal Coherence Engine V1.5.39
 © Hudson & Perry Research
 ⚠ R&D ONLY — Proxy indicators, no warranty
 
@@ -870,9 +908,57 @@ function FileChip({att,onRemove}) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  BEHAVIORAL SIGNAL DETECTION
-// ═══════════════════════════════════════════════════════════════
+// ── Response entropy (Shannon) ─────────────────────────────────
+// Measures information density of the response token distribution.
+// Very low entropy (<0.8): repetitive filler — model stagnating.
+// Very high entropy (>3.5) + high new-vocab rate: possible hallucination
+// (inventing novel entities/specifics not grounded in session context).
+function computeResponseEntropy(tokens) {
+  if (!tokens.length) return 0;
+  const freq={};
+  tokens.forEach(w=>{freq[w]=(freq[w]||0)+1;});
+  const total=tokens.length;
+  return -Object.values(freq).reduce((s,c)=>{
+    const p=c/total;
+    return s+p*Math.log2(p);
+  },0);
+}
+
+// ── Vocabulary growth rate ─────────────────────────────────────
+// Fraction of tokens in the new response that are entirely new to the
+// session vocabulary (not seen in last 4 assistant turns).
+// High rate (>0.70) under elevated variance = novel entity injection risk.
+function computeVocabGrowthRate(newTokens, history) {
+  const ah=history.filter(m=>m.role==="assistant");
+  if (ah.length<2||!newTokens.length) return 0;
+  const priorVocab=new Set(
+    ah.slice(-4).flatMap(m=>tokenize(getTextFromContent(m.content)))
+  );
+  if (!priorVocab.size) return 0;
+  return newTokens.filter(t=>!priorVocab.has(t)).length/newTokens.length;
+}
+
+// ── N-gram repetition ──────────────────────────────────────────
+// Bigram overlap between new response and last 4 assistant turns.
+// High bigram repetition (>0.40) = model looping or confusion.
+// More sensitive than word-level overlap with just the prior turn.
+function buildBigrams(tokens) {
+  const bg=[];
+  for (let i=0;i<tokens.length-1;i++) bg.push(tokens[i]+"_"+tokens[i+1]);
+  return bg;
+}
+function checkNgramRepetition(responseText, history) {
+  const ah=history.filter(m=>m.role==="assistant");
+  if (ah.length<2) return 0;
+  const newBg=buildBigrams(tokenize(responseText));
+  if (!newBg.length) return 0;
+  const priorBg=new Set(
+    ah.slice(-4).flatMap(m=>buildBigrams(tokenize(getTextFromContent(m.content))))
+  );
+  return newBg.filter(b=>priorBg.has(b)).length/newBg.length;
+}
+
+
 
 const ROLEPLAY_PATTERNS=[
   /\bI am (now |here |acting as |playing )/i,
@@ -950,6 +1036,13 @@ function assessBehavioralSignals(responseText, userText, history) {
     signals.push({type:"unsolicited_elaboration",detail:`Response ${unsolicited.length>0?"contains unrequested content patterns":"is "+Math.round(wordCount/avgLen*100)+"% longer than session average"}`});
   }
 
+  // V1.5.39: n-gram repetition — high bigram overlap with recent turns
+  // indicates model looping or confusion, not caught by word-level checks.
+  const ngramRate=checkNgramRepetition(responseText,history);
+  if (ngramRate>0.40&&ah.length>=3) {
+    signals.push({type:"phrase_repetition",detail:`${Math.round(ngramRate*100)}% bigram overlap with recent turns — possible looping`});
+  }
+
   return {
     flagged:signals.length>0,
     signals,
@@ -987,9 +1080,13 @@ function checkSelfContradiction(responseText, history) {
   const ah=history.filter(m=>m.role==="assistant");
   if (ah.length<2) return false;
   const respT=tokenize(responseText);
+  // V1.5.39: related threshold lowered from 0.35 to 0.25 — calibrated for
+  // smoothed IDF. With working TF-IDF, on-topic continuations score 0.30-0.50.
+  // Old 0.35 threshold was at the edge of normal on-topic scoring and missed
+  // related turns. 0.25 catches same-topic turns more reliably.
   const related=ah.slice(-6).filter(m=>{
     const sim=tfidfSimilarity(respT,tokenize(getTextFromContent(m.content)));
-    return sim>0.35;
+    return sim>0.25;
   });
   if (!related.length) return false;
   const avgSim=related.reduce((s,m)=>
@@ -1004,6 +1101,11 @@ function assessHallucinationSignals(responseText, smoothedVar, attachments, hist
   // M1 fix: use cfg.varCaution so MEDICAL preset's tighter threshold (0.090) applies
   const vCau=cfg?.varCaution??VAR_CAUTION;
 
+  // V1.5.39: entropy + vocab growth rate signals
+  const respTokens=tokenize(responseText);
+  const entropy=computeResponseEntropy(respTokens);
+  const vocabGrowth=computeVocabGrowthRate(respTokens,history);
+
   const signals=[];
   if (confidenceHits>=2&&smoothedVar>vCau) {
     signals.push(`high-confidence language (${confidenceHits} markers) with elevated variance`);
@@ -1014,6 +1116,14 @@ function assessHallucinationSignals(responseText, smoothedVar, attachments, hist
   if (contradiction) {
     signals.push("possible self-contradiction with prior turn on same topic");
   }
+  // Low entropy = repetitive filler, model stagnating
+  if (entropy>0&&entropy<0.8&&respTokens.length>10) {
+    signals.push(`low response entropy (${entropy.toFixed(2)}) — repetitive or low-information reply`);
+  }
+  // High new-vocab rate under elevated variance = novel entity injection risk
+  if (vocabGrowth>0.70&&smoothedVar>vCau&&history.filter(m=>m.role==="assistant").length>=3) {
+    signals.push(`high vocabulary novelty (${Math.round(vocabGrowth*100)}% new terms) under elevated variance — possible confabulation`);
+  }
 
   return {
     flagged: signals.length>0,
@@ -1021,6 +1131,8 @@ function assessHallucinationSignals(responseText, smoothedVar, attachments, hist
     sourceScore,
     confidenceHits,
     contradiction,
+    entropy,
+    vocabGrowth,
   };
 }
 
@@ -1033,7 +1145,10 @@ function computeSessionHealth(coherenceData, driftCount, smoothedVar, calmStreak
   const bw=cfg?.healthBSigWeight??4;
   const hw=cfg?.healthHSigWeight??6;
   const driftPenalty=Math.min(driftCount*dw,40);
-  const varPenalty=smoothedVar>VAR_DECOHERENCE?20:smoothedVar>VAR_CAUTION?10:0;
+  // V1.5.39: continuous variance penalty — replaces binary step function.
+  // Previous: 0/10/20 at three fixed thresholds. Now scales continuously
+  // with variance * 100, capped at 25. More granular health signal.
+  const varPenalty=Math.min(25,Math.round((smoothedVar||0)*100));
   const calmBonus=lock888?10:calmStreak>=3?5:0;
   const bSigCount=coherenceData.filter(d=>d.behavioralFlag).length;
   const hSigCount=coherenceData.filter(d=>d.hallucinationFlag).length;
@@ -1047,7 +1162,7 @@ function computeSessionHealth(coherenceData, driftCount, smoothedVar, calmStreak
 const FRAMEWORK_CONTENT=`ARCHITECT — UNIVERSAL COHERENCE ENGINE
 TIME-VARYING ERROR DYNAMICS & AI COHERENCE ENGINE
 Authors: David Hudson (@RaccoonStampede) & David Perry (@Prosperous727)
-Version 3.6  |  V1.5.38  |  © 2026
+Version 3.6  |  V1.5.39  |  © 2026
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1196,7 +1311,7 @@ CONFIRMED: SDE math ✓ | Kalman ✓ | GARCH ✓ | TF-IDF+JSD ✓
 REQUIRES VALIDATION: C-score vs. human judgment | H-signal
 false positive rate | 623.81 Hz physical anchor
 
-V1.5.3–V1.5.38 ADDITIONS TO FRAMEWORK
+V1.5.3–V1.5.39 ADDITIONS TO FRAMEWORK
   GARCH preset tuning: per-preset omega/alpha/beta now applied.
   Epsilon param: mathEpsilon wired to cap_eff, chart bands, MATH tab.
   cfg threading: varCaution/Decoherence/Calm flow through pipe, gate,
@@ -1206,11 +1321,11 @@ V1.5.3–V1.5.38 ADDITIONS TO FRAMEWORK
     and Advanced Tab state survive session reload.
   Rewind: prev/next buttons use actual buffer bounds.
   All key values memoized. Model string: claude-sonnet-4-6.
-  V1.5.17–V1.5.38: Advanced Tab (CIR/Heston, Custom Rails, MHT Study,
+  V1.5.17–V1.5.39: Advanced Tab (CIR/Heston, Custom Rails, MHT Study,
     Poole CA Sim, DATL Heartbeat). CIRCUIT preset. SDE path viz.
     Circuit Signal sidebar. Mobile scroll fixed. Full pseudoscience
     cleanup — experimental framing behind consent gate. MessageBubble
-    memoized. All version strings normalized to V1.5.38.
+    memoized. All version strings normalized to V1.5.39.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1220,7 +1335,7 @@ V1.5.3–V1.5.38 ADDITIONS TO FRAMEWORK
 // ── Guide Content ──────────────────────────────────────────────
 const GUIDE_CONTENT=`ARCHITECT — UNIVERSAL COHERENCE ENGINE · USER GUIDE
 How to Read the Graph · How to Detect Drift · How to Use the Harness
-Version 1.5.38  |  © 2026 David Hudson & David Perry
+Version 1.5.39  |  © 2026 David Hudson & David Perry
 
 ARCHITECT monitors AI response quality in real time. It scores every
 response mathematically, tracks coherence trends, and injects corrective
@@ -1409,7 +1524,7 @@ A: Yes. CHAT downloads a clean text file with an audit table.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PART 8 — V1.5.x ADDITIONS (V1.5.0 → V1.5.38)
+PART 8 — V1.5.x ADDITIONS (V1.5.0 → V1.5.39)
 
 SDE PATH COUNT (TUNE → SDE SIMULATION PATHS)
   Default: 50 paths. Options: 5, 10, 20, 25, 50, 100, 200, 250, 300, 500.
@@ -1608,7 +1723,7 @@ const DisclaimerModal = React.memo(function DisclaimerModal({showDisclaimer,setS
         </div>
         <div style={{fontFamily:"Courier New, monospace",fontSize:8,
           color:"#4A6060",letterSpacing:1}}>
-          ARCHITECT — UNIVERSAL COHERENCE ENGINE V1.5.38 · READ IN FULL BEFORE PROCEEDING
+          ARCHITECT — UNIVERSAL COHERENCE ENGINE V1.5.39 · READ IN FULL BEFORE PROCEEDING
         </div>
       </div>
 
@@ -2579,7 +2694,7 @@ const TuneModal = React.memo(function TuneModal() {
         display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <span style={{fontFamily:"Courier New, monospace",fontSize:8,
           color:"#2E5070",letterSpacing:1}}>
-          ACTIVE: {PRESETS[activePreset]?.label??activePreset} · V1.5.38
+          ACTIVE: {PRESETS[activePreset]?.label??activePreset} · V1.5.39
         </span>
         <button onClick={()=>setShowTuning(false)}
           style={{padding:"4px 14px",background:"#EEF8F2",
@@ -3047,7 +3162,7 @@ const BookmarksModal = React.memo(function BookmarksModal() {
         </span>
         <span style={{fontFamily:"Courier New, monospace",fontSize:8,
           color:"#2E5070",letterSpacing:1}}>
-          V1.5.38 © HUDSON &amp; PERRY
+          V1.5.39 © HUDSON &amp; PERRY
         </span>
       </div>
     </div>
@@ -3985,11 +4100,11 @@ export default function HudsonPerryDriftV1() {
           const t_k=turn*(2*Math.PI/12);
           // V1.5.0: use userKappa in SDE params for Kalman
           const liveSDEParams={...liveSDEOverride,kappa:userKappa};
-          newKalman=kalmanStep(kalmanState,rawScore,t_k,liveSDEParams,mathKalmanR,mathKalmanSigP);
+          newKalman=kalmanStep(kalmanState,rawScore,t_k,liveSDEParams,mathKalmanR,mathKalmanSigP,smoothedVar??0);
           // V1.5.0 dual-filter: second Kalman pass using post-audit score
           // Tightens estimate when post-audit diverges from live score.
           if (postAuditScore!==null&&doPostAudit) {
-            newKalman=kalmanStep(newKalman,postAuditScore,t_k,liveSDEParams,mathKalmanR,mathKalmanSigP);
+            newKalman=kalmanStep(newKalman,postAuditScore,t_k,liveSDEParams,mathKalmanR,mathKalmanSigP,smoothedVar??0);
           }
           setKalmanState(newKalman);
         }
@@ -4514,9 +4629,9 @@ export default function HudsonPerryDriftV1() {
       {/* HEADER */}
       <div style={S.header}>
         <div>
-          <div style={S.title}>ARCHITECT — UNIVERSAL COHERENCE ENGINE V1.5.38</div>
+          <div style={S.title}>ARCHITECT — UNIVERSAL COHERENCE ENGINE V1.5.39</div>
           <div style={S.subtitle}>
-            © HUDSON &amp; PERRY RESEARCH · MUTE:{featMute?"ON":"OFF"} · GATE:{featGate?"ON":"OFF"} · PIPE:{featPipe?"ON":"OFF"} · REWIND:ON · V1.5.38
+            © HUDSON &amp; PERRY RESEARCH · MUTE:{featMute?"ON":"OFF"} · GATE:{featGate?"ON":"OFF"} · PIPE:{featPipe?"ON":"OFF"} · REWIND:ON · V1.5.39
           </div>
           <div style={{display:"flex",gap:10,marginTop:3}}>
             <a href="https://x.com/RaccoonStampede" target="_blank" rel="noreferrer"
@@ -4707,7 +4822,7 @@ export default function HudsonPerryDriftV1() {
         <div style={{background:"#F8FAFC",borderBottom:"1px solid #1EAAAA44",padding:"12px 20px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <span style={{...S.sectionTitle,marginBottom:0,color:"#0A7878"}}>
-              MISSION PROTOCOL — HUDSON &amp; PERRY ARCHITECT V1.5.38
+              MISSION PROTOCOL — HUDSON &amp; PERRY ARCHITECT V1.5.39
             </span>
             <button style={{...S.exportBtn,background:copied?"#E4F4F4":"transparent",
               color:copied?"#178040":"#0A7878"}} onClick={handleCopyExport}>
@@ -4764,7 +4879,7 @@ export default function HudsonPerryDriftV1() {
               <div style={{margin:"auto",textAlign:"center",
                 fontFamily:"Courier New, monospace",fontSize:11,lineHeight:2}}>
                 <div style={{fontSize:28,marginBottom:12,opacity:.3}}>⬡</div>
-                <div style={{opacity:.5,marginBottom:4}}>ARCHITECT — UNIVERSAL COHERENCE ENGINE V1.5.38</div>
+                <div style={{opacity:.5,marginBottom:4}}>ARCHITECT — UNIVERSAL COHERENCE ENGINE V1.5.39</div>
                 <div style={{fontSize:9,letterSpacing:2,opacity:.4}}>
                   SDE · KALMAN · GARCH · TF-IDF · JSD · RAG · PIPE · MUTE · GATE · REWIND · ARCHITECT
                 </div>

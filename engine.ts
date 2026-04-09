@@ -1,7 +1,7 @@
 /**
  * HPDL SDK — PIPE, RAG, HEALTH, PRUNE
  * The control layer: u_drift(t) in practice.
- * Version 1.5.38
+ * Version 1.5.39
  *
  * Pipe injection = bounded corrective forcing injected into the system prompt.
  * It acts on system evolution (the AI's next response) without modifying

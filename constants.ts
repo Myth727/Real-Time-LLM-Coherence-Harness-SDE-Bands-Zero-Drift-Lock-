@@ -2,7 +2,7 @@
  * ARCHITECT — Core Constants & Presets
  * © 2026 Hudson & Perry Research
  * @RaccoonStampede · @Prosperous727
- * Version 1.5.38
+ * Version 1.5.39
  *
  * All constants used by the coherence scoring, Kalman filter, GARCH
  * variance model, SDE drift bands, and pipe injection engine.

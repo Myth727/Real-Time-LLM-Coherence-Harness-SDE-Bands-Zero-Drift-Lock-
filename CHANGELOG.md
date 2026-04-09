@@ -3,6 +3,35 @@
 © 2026 Hudson & Perry Research
 𝕏 @RaccoonStampede (David Hudson) · 𝕏 @Prosperous727 (David Perry)
 
+## V1.5.39
+
+### Signal Detection — 5 new proxies
+
+- **Response entropy (Shannon H)**: measures information density of each response. Very low entropy (<0.8) on a response with >10 tokens = repetitive filler / model stagnating. Added as H-signal.
+- **Vocabulary growth rate**: fraction of new response tokens not seen in last 4 assistant turns. >70% new vocabulary under elevated variance = possible confabulation / novel entity injection. Added as H-signal.
+- **N-gram (bigram) repetition**: bigram overlap between new response and last 4 assistant turns. >40% overlap after 3+ turns = model looping or confusion. Added as B-signal. More sensitive than prior word-level single-turn overlap check.
+
+### SDE and Kalman upgrades
+
+- **GARCH-in-Mean coupling** (Engle, Lilien & Robins 1987): `delta` term added to SDE drift — when variance is high, drift is pushed toward mean reversion harder. GARCH and SDE are now a coupled system, not two parallel independent models. `SDE_DELTA = 0.30`. Same delta flows into `kalmanStep` via `smoothedVar` parameter — process model now responds to session volatility in real time.
+- **Jump-diffusion** (Merton 1976): Poisson jump process added to `simulateSDE`. `JUMP_INTENSITY = 0.05`, `JUMP_MAGNITUDE = 0.12`. Sudden topic shifts in conversations are discontinuous events — not smooth drift — and are now modeled as such. SDE uncertainty bands reflect jump risk.
+- Both new SDE params live in `SDE_PARAMS` and flow through `liveSDEOverride` to all call sites automatically.
+
+### Threshold recalibrations (post V1.5.38 TF-IDF fix)
+
+- **RAG retrieval threshold** raised from 0.05 to 0.15. Old threshold was calibrated against broken TF-IDF that always returned 0. With working smoothed IDF, 0.05 was too loose and would retrieve marginally-related turns.
+- **Contradiction detection** related-turn threshold lowered from 0.35 to 0.25. On-topic continuations now correctly score 0.30–0.50, placing the old 0.35 threshold at the edge of normal scoring. 0.25 catches same-topic turns more reliably.
+- **Health score variance penalty** replaced binary step-function (0/10/20 at fixed thresholds) with continuous scaling: `min(25, round(smoothedVar * 100))`. More granular health signal.
+
+### Downstream effects of V1.5.38 TF-IDF fix (now documented)
+
+- **Topic hijack was always firing** — `detectTopicHijack` uses `sim < 0.05`; old TF-IDF always returned 0, so every response triggered topic hijack. B-signals were false-positiving constantly.
+- **RAG never retrieved** — `ragRetrieve` filters `sim > 0.05`; old TF-IDF always returned 0, so RAG MEMORY was never injected into any prompt. Ever.
+- **Contradiction never detected** — `checkSelfContradiction` requires `sim > 0.35` to find related turns; old TF-IDF always returned 0. All three fix themselves with V1.5.38.
+- All version strings bumped to V1.5.39.
+
+---
+
 ## V1.5.38
 - CRITICAL SCORING FIX: tfidfSimilarity always returned 0 due to a mathematical identity in the IDF formula. Previous formula log(2/df): shared terms → IDF=log(1)=0 (zeroed); unique terms → other doc has tf=0, so dot contribution=0. Result: dot product always 0, function constant at 0 regardless of input. The 0.25 TF-IDF weight in the coherence formula has been dead since initial implementation. Fix: smoothed IDF = log((N+1)/(df+1))+1 (standard Scikit-learn default). Shared terms now contribute weight 1.0, unique terms 1.405. Identical texts now score ~1.0, on-topic continuations 0.3–0.6, off-topic responses ~0.0. Same fix applied to coherence.ts in SDK. Identified by external AI analysis (April 2026).
 - All version strings bumped to V1.5.38.

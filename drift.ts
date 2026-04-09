@@ -1,6 +1,6 @@
 /**
  * HPDL SDK — GARCH & DRIFT LAW
- * Version 1.5.38
+ * Version 1.5.39
  *
  * GARCH(1,1): sigma2_t = omega + alpha * eps2_{t-1} + beta * sigma2_{t-1}
  * Drift Law:  deltaS = cap_eff * (1 - exp(-n^alpha_s / tau))

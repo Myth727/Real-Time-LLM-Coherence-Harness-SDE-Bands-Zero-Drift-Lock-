@@ -1,6 +1,6 @@
 /**
  * HPDL SDK — COHERENCE SCORING
- * Version 1.5.38
+ * Version 1.5.39
  *
  * C = w_tfidf·TF-IDF + w_jsd·(1−JSD) + w_len·lenScore
  *   + w_struct·struct + w_persist·persist
@@ -79,7 +79,7 @@ export function buildTermFreq(tokens: string[]): Record<string, number> {
 /**
  * 2-document TF-IDF cosine similarity.
  *
- * V1.5.38 fix: smoothed IDF = log((N+1)/(df+1)) + 1 (Scikit-learn default).
+ * V1.5.39 fix: smoothed IDF = log((N+1)/(df+1)) + 1 (Scikit-learn default).
  * Previous formula log(2/df) zeroed shared terms → dot product always 0
  * → function always returned 0 regardless of input.
  *

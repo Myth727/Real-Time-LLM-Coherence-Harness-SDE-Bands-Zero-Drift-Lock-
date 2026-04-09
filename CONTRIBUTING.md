@@ -1,5 +1,5 @@
 # Contributing to ARCHITECT
-*Version 1.5.38*
+*Version 1.5.39*
 
 Thank you for your interest in contributing to ARCHITECT — a universal coherence engine built on top of Claude.
 
