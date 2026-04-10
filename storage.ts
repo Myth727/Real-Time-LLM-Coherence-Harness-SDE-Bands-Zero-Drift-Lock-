@@ -1,100 +1,150 @@
 /**
- * HPDL SDK — STORAGE POLYFILL
+ * ARCHITECT — Universal Coherence Engine
+ * SDK: Storage Adapter
+ * Version 1.5.42
+ * © 2026 Hudson & Perry Research
  *
- * The artifact uses window.storage (Claude artifact sandbox API).
- * Outside the artifact (Vercel, localhost, Node), this polyfill
- * swaps to localStorage transparently.
+ * Provides a unified storage interface that works both inside the Claude
+ * artifact sandbox (window.storage) and in external environments
+ * (localStorage, in-memory fallback).
  *
- * Usage:
- *   import { storage } from 'hpdl-sdk';
- *   await storage.set('hpdl_config', JSON.stringify(config));
- *   const result = await storage.get('hpdl_config');
+ * The Claude artifact environment uses window.storage (key-value, async).
+ * Vercel/Node deployments fall back to localStorage or in-memory storage.
  */
 
+// ── Types ─────────────────────────────────────────────────────────
+
 export interface StorageResult {
-  key:    string;
-  value:  string;
-  shared: boolean;
+  key: string;
+  value: string;
+  shared?: boolean;
 }
 
 export interface StorageAdapter {
-  get(key: string, shared?: boolean):    Promise<StorageResult | null>;
+  get(key: string, shared?: boolean): Promise<StorageResult | null>;
   set(key: string, value: string, shared?: boolean): Promise<StorageResult | null>;
-  delete(key: string, shared?: boolean): Promise<{ key: string; deleted: boolean; shared: boolean } | null>;
-  list(prefix?: string, shared?: boolean): Promise<{ keys: string[]; prefix?: string; shared: boolean } | null>;
+  delete(key: string, shared?: boolean): Promise<{ key: string; deleted: boolean } | null>;
+  list(prefix?: string, shared?: boolean): Promise<{ keys: string[] } | null>;
 }
 
-// ── Detect environment ──────────────────────────────────────────
-function getWindowStorage(): StorageAdapter | null {
-  if (typeof window !== 'undefined' && (window as any).storage) {
-    return (window as any).storage as StorageAdapter;
+// ── In-memory fallback ─────────────────────────────────────────────
+
+class MemoryStorage implements StorageAdapter {
+  private store = new Map<string, string>();
+
+  async get(key: string): Promise<StorageResult | null> {
+    const value = this.store.get(key);
+    if (value === undefined) return null;
+    return { key, value };
   }
-  return null;
+
+  async set(key: string, value: string): Promise<StorageResult | null> {
+    this.store.set(key, value);
+    return { key, value };
+  }
+
+  async delete(key: string): Promise<{ key: string; deleted: boolean } | null> {
+    const deleted = this.store.delete(key);
+    return { key, deleted };
+  }
+
+  async list(prefix?: string): Promise<{ keys: string[] } | null> {
+    const keys = [...this.store.keys()].filter(k =>
+      prefix ? k.startsWith(prefix) : true
+    );
+    return { keys };
+  }
 }
 
-// ── localStorage adapter ────────────────────────────────────────
-const localStorageAdapter: StorageAdapter = {
-  async get(key) {
+// ── localStorage adapter ───────────────────────────────────────────
+
+class LocalStorageAdapter implements StorageAdapter {
+  async get(key: string): Promise<StorageResult | null> {
     try {
       const value = localStorage.getItem(key);
-      if (value === null) throw new Error(`Key not found: ${key}`);
-      return { key, value, shared: false };
+      if (value === null) return null;
+      return { key, value };
     } catch {
-      throw new Error(`Key not found: ${key}`);
+      return null;
     }
-  },
-  async set(key, value) {
+  }
+
+  async set(key: string, value: string): Promise<StorageResult | null> {
     try {
       localStorage.setItem(key, value);
-      return { key, value, shared: false };
+      return { key, value };
     } catch {
       return null;
     }
-  },
-  async delete(key) {
+  }
+
+  async delete(key: string): Promise<{ key: string; deleted: boolean } | null> {
     try {
       localStorage.removeItem(key);
-      return { key, deleted: true, shared: false };
+      return { key, deleted: true };
     } catch {
-      return null;
+      return { key, deleted: false };
     }
-  },
-  async list(prefix) {
+  }
+
+  async list(prefix?: string): Promise<{ keys: string[] } | null> {
     try {
-      const keys = Object.keys(localStorage)
-        .filter(k => !prefix || k.startsWith(prefix));
-      return { keys, prefix, shared: false };
+      const keys: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (!prefix || k.startsWith(prefix))) keys.push(k);
+      }
+      return { keys };
     } catch {
       return null;
     }
-  },
-};
+  }
+}
 
-// ── In-memory adapter (Node/test environments) ──────────────────
-const memStore = new Map<string, string>();
-const memoryAdapter: StorageAdapter = {
-  async get(key) {
-    if (!memStore.has(key)) throw new Error(`Key not found: ${key}`);
-    return { key, value: memStore.get(key)!, shared: false };
-  },
-  async set(key, value) {
-    memStore.set(key, value);
-    return { key, value, shared: false };
-  },
-  async delete(key) {
-    memStore.delete(key);
-    return { key, deleted: true, shared: false };
-  },
-  async list(prefix) {
-    const keys = [...memStore.keys()].filter(k => !prefix || k.startsWith(prefix));
-    return { keys, prefix, shared: false };
-  },
-};
+// ── window.storage adapter (Claude artifact sandbox) ──────────────
 
-// ── Auto-detect and export ──────────────────────────────────────
-export const storage: StorageAdapter = (() => {
-  const win = getWindowStorage();
-  if (win) return win;
-  if (typeof localStorage !== 'undefined') return localStorageAdapter;
-  return memoryAdapter;
-})();
+class WindowStorageAdapter implements StorageAdapter {
+  private ws = (window as unknown as { storage: StorageAdapter }).storage;
+
+  async get(key: string, shared = false): Promise<StorageResult | null> {
+    return this.ws.get(key, shared);
+  }
+
+  async set(key: string, value: string, shared = false): Promise<StorageResult | null> {
+    return this.ws.set(key, value, shared);
+  }
+
+  async delete(key: string, shared = false): Promise<{ key: string; deleted: boolean } | null> {
+    return this.ws.delete(key, shared);
+  }
+
+  async list(prefix?: string, shared = false): Promise<{ keys: string[] } | null> {
+    return this.ws.list(prefix, shared);
+  }
+}
+
+// ── Auto-detect and export the right adapter ──────────────────────
+
+function createStorage(): StorageAdapter {
+  if (typeof window !== 'undefined') {
+    if ((window as unknown as { storage?: unknown }).storage) {
+      return new WindowStorageAdapter();
+    }
+    if (typeof localStorage !== 'undefined') {
+      return new LocalStorageAdapter();
+    }
+  }
+  return new MemoryStorage();
+}
+
+export const storage: StorageAdapter = createStorage();
+
+// ── ARCHITECT storage keys ────────────────────────────────────────
+// Split into two keys to stay under 5MB per-key limit:
+//   hpdl_config — settings, toggles, constants, framework mode (~small)
+//   hpdl_data   — coherence data, events, RAG cache (~grows with session)
+
+export const STORAGE_KEYS = {
+  CONFIG: 'hpdl_config',
+  DATA: 'hpdl_data',
+} as const;
