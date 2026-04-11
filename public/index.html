@@ -2,49 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>ARCHITECT — Universal Coherence Engine V1.5.43</title>
   <meta name="description" content="Real-time LLM coherence monitoring — Hudson & Perry Research" />
-
-  <!-- React + ReactDOM from CDN -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-
-  <!-- Recharts from CDN -->
-  <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
-
-  <!-- Babel standalone — transpiles JSX in the browser -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body, #root { height: 100%; width: 100%; overflow: hidden; }
-    body { background: #0E1C2A; font-family: "Courier New", monospace; }
+    html, body { height: 100%; width: 100%; overflow: hidden; background: #0E1C2A; }
+    #root { height: 100%; width: 100%; }
   </style>
 </head>
 <body>
   <div id="root"></div>
-
-  <!--
-    ARCHITECT.jsx is loaded as a Babel-transpiled script.
-    Recharts components are available via window.Recharts.
-    The file must export a default component OR define window.App.
-  -->
-  <script type="text/babel" data-type="module" src="/ARCHITECT.jsx"></script>
-
-  <script>
-    // Mount after Babel finishes transpiling
-    window.addEventListener("load", function () {
-      const interval = setInterval(function () {
-        // ARCHITECT.jsx default export should be available on window
-        const App = window.__ARCHITECT_APP__ || window.App;
-        if (App && window.React && window.ReactDOM) {
-          clearInterval(interval);
-          const root = ReactDOM.createRoot(document.getElementById("root"));
-          root.render(React.createElement(App));
-        }
-      }, 100);
-    });
-  </script>
+  <script src="/bundle.js"></script>
 </body>
 </html>
