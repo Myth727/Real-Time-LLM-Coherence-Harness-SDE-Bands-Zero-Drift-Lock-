@@ -17,7 +17,7 @@ import {
 // ═══════════════════════════════════════════════════════════════
 
 // ── Deployment ─────────────────────────────────────────────────
-const API_ENDPOINT = "https://api.anthropic.com/v1/messages"; // ← change to "/api/claude" on Vercel
+const API_ENDPOINT = "/api/claude"; // Vercel serverless proxy — see api/claude.js
 
 // ── Feature toggles ────────────────────────────────────────────
 // P17: These module-level constants are BOOT DEFAULTS only.
@@ -5864,3 +5864,5 @@ export default function HudsonPerryDriftV1() {
     </TuneCtx.Provider>
   );
 }
+// Vercel mount — exposes root component for public/index.html
+if (typeof window !== 'undefined') { window.__ARCHITECT_APP__ = HudsonPerryDriftV1; }
