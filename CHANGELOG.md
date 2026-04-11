@@ -3,6 +3,69 @@
 © 2026 Hudson & Perry Research
 𝕏 @RaccoonStampede (David Hudson) · 𝕏 @Prosperous727 (David Perry)
 
+## V1.5.43
+
+### Chart — EWMA trend line & Anchor distance line; Sidebar — Momentum & Anchor dist rows
+
+- **chartData EWMA field**: `ewma` value from `coherenceData` now mapped into chart data. Clamped to [0.20, 0.99]. Null if missing or NaN.
+- **chartData Anchor field**: `anchorDist` from `coherenceData` inverted and scaled — `1 − anchorDist × 0.4` — so low drift from session origin reads high on chart. Clamped to [0.20, 0.99]. Null if missing, NaN, or fewer than 4 turns.
+- **EWMA chart line**: Purple (`#8040C0`), strokeWidth 1, dasharray `4 2`, no dots, no connectNulls. Label "EWMA".
+- **Anchor chart line**: Amber (`#C87000`), strokeWidth 1, dasharray `1 3`, no dots, no connectNulls. Label "Anchor".
+- **Sidebar — Momentum row**: Shows `↑ RISING` / `↓ FALLING` / `→ FLAT` from `coherenceData[last].trend`. Colors: rising=#178040, falling=#C81030, flat=#906000. Shows `—` (#2E5070) when no data.
+- **Sidebar — Anchor dist row**: Shows numeric `anchorDist.toFixed(3)` prefixed with `⚠ ` when > 0.60. Shows `—` when fewer than 4 turns or no data. Colors: >0.60=#C81030, >0.35=#9A5C08, otherwise=#178040.
+- **Bug fix**: Orphaned `setShowGuide={setShowGuide}` prop and stray `/>` outside `<DisclaimerModal />` closing tag removed (parse error).
+- All version strings bumped to V1.5.43.
+
+---
+
+## V1.5.42
+
+### Integrity Floor — Coherence Bond Threshold Detection
+
+New experimental feature in Advanced tab (consent-gated), inspired by Trumble's Macro-Ratchet Framework (2026) and the hydrogen ionization floor concept (13.59844 eV, NIST).
+
+**The core distinction:**
+- **DRIFT** — AI is losing the thread. Recoverable. Harness corrects.
+- **INTEGRITY BREACH** — Coherence bond dissolved. Reset, not repair.
+
+ARCHITECT previously treated both the same. V1.5.42 separates them.
+
+**What was added:**
+- `showIntegrityFloor` toggle in Advanced → INTEGRITY FLOOR panel
+- `featIntegrityFloor` detection toggle (default off)
+- `integrityThreshold` tunable (default 0.15, range 0.05–0.40)
+- `integrityBreachCount` state — tracks breaches per session, resets on session reset
+- When `featIntegrityFloor` is on and `rawScore < integrityThreshold`: logs `INTEGRITY_BREACH` event with score, threshold, and note "session integrity compromised — consider reset"
+- Pipe directive changes from "consolidate" to integrity breach warning
+- Sidebar shows INTEGRITY FLOOR panel when active: INTACT (green) or N BREACH(ES) (red) with floor value
+- Panel UI explains the concept in plain English with Trumble citation
+- `integrityBreachCount` reset on session reset alongside driftCount and lock888
+
+**Reference:** Trumble, R.T. (2026). The Macro-Ratchet Framework: Coherent Ordering Dynamics and Universal Predictive Algebra. Zenodo.
+
+---
+
+## V1.5.41
+
+### Framework Mode Disclosure
+
+- **First-run framework choice modal**: On first load the disclaimer now requires users to choose their framework mode before proceeding. Two options clearly presented — cannot dismiss without choosing.
+
+  - **HUDSON FRAMEWORK (κ = 0.444)**: Validated default. Full Hudson-Perry Drift Law active including Zero-Drift Lock, LOCK_888 stability, and 623.81 Hz resonance anchor. Recommended.
+  - **STANDARD MODE (κ = 0.500)**: Neutral Ornstein-Uhlenbeck damping. No framework-specific claims. All math engine (Kalman, GARCH, SDE, signals) fully active.
+
+- **κ range expanded**: Edit Constants now accepts κ from **0.00 to 5.00** (previously 0.10–2.00). Free numeric input. All values mathematically stable since α = -0.25 < 0 regardless of κ. Live λ = 1/(1+κ) shown beneath input.
+
+- **Reset button**: ↺ RESET in Edit Constants resets to mode-appropriate default — 0.444 for Hudson, 0.500 for Standard.
+
+- **Sidebar κ indicator**: HARNESS STATUS sidebar now always shows active κ value and mode (`0.444 HUDSON` or `0.500 STANDARD` or custom value). Never invisible.
+
+- **Mode-aware Edit Constants label**: Panel header and description adapt to show whether Hudson or Standard mode is active.
+
+- **Persistence**: `hudsonMode` saved to `hpdl_config` — choice persists across sessions, never asked again after first run.
+
+---
+
 ## V1.5.40
 
 ### 6 new mathematical tools — developer toolkit expansion
@@ -390,50 +453,5 @@ All 6 metrics stored in `coherenceData` per turn: `ewma`, `trend`, `momentum`, `
 
 ---
 
-## V1.5.41
 
-### Framework Mode Disclosure
-
-- **First-run framework choice modal**: On first load the disclaimer now requires users to choose their framework mode before proceeding. Two options clearly presented — cannot dismiss without choosing.
-
-  - **HUDSON FRAMEWORK (κ = 0.444)**: Validated default. Full Hudson-Perry Drift Law active including Zero-Drift Lock, LOCK_888 stability, and 623.81 Hz resonance anchor. Recommended.
-  - **STANDARD MODE (κ = 0.500)**: Neutral Ornstein-Uhlenbeck damping. No framework-specific claims. All math engine (Kalman, GARCH, SDE, signals) fully active.
-
-- **κ range expanded**: Edit Constants now accepts κ from **0.00 to 5.00** (previously 0.10–2.00). Free numeric input. All values mathematically stable since α = -0.25 < 0 regardless of κ. Live λ = 1/(1+κ) shown beneath input.
-
-- **Reset button**: ↺ RESET in Edit Constants resets to mode-appropriate default — 0.444 for Hudson, 0.500 for Standard.
-
-- **Sidebar κ indicator**: HARNESS STATUS sidebar now always shows active κ value and mode (`0.444 HUDSON` or `0.500 STANDARD` or custom value). Never invisible.
-
-- **Mode-aware Edit Constants label**: Panel header and description adapt to show whether Hudson or Standard mode is active.
-
-- **Persistence**: `hudsonMode` saved to `hpdl_config` — choice persists across sessions, never asked again after first run.
-
-
----
-
-## V1.5.42
-
-### Integrity Floor — Coherence Bond Threshold Detection
-
-New experimental feature in Advanced tab (consent-gated), inspired by Trumble's Macro-Ratchet Framework (2026) and the hydrogen ionization floor concept (13.59844 eV, NIST).
-
-**The core distinction:**
-- **DRIFT** — AI is losing the thread. Recoverable. Harness corrects.
-- **INTEGRITY BREACH** — Coherence bond dissolved. Reset, not repair.
-
-ARCHITECT previously treated both the same. V1.5.42 separates them.
-
-**What was added:**
-- `showIntegrityFloor` toggle in Advanced → INTEGRITY FLOOR panel
-- `featIntegrityFloor` detection toggle (default off)
-- `integrityThreshold` tunable (default 0.15, range 0.05–0.40)
-- `integrityBreachCount` state — tracks breaches per session, resets on session reset
-- When `featIntegrityFloor` is on and `rawScore < integrityThreshold`: logs `INTEGRITY_BREACH` event with score, threshold, and note "session integrity compromised — consider reset"
-- Pipe directive changes from "consolidate" to integrity breach warning
-- Sidebar shows INTEGRITY FLOOR panel when active: INTACT (green) or N BREACH(ES) (red) with floor value
-- Panel UI explains the concept in plain English with Trumble citation
-- `integrityBreachCount` reset on session reset alongside driftCount and lock888
-
-**Reference:** Trumble, R.T. (2026). The Macro-Ratchet Framework: Coherent Ordering Dynamics and Universal Predictive Algebra. Zenodo.
 
