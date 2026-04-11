@@ -9,19 +9,22 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  // Read the key the user typed into the ARCHITECT key field
+  const apiKey = req.headers["x-api-key"];
+
   if (!apiKey) {
-    return res.status(500).json({ error: "ANTHROPIC_API_KEY not configured" });
+    return res.status(401).json({
+      error: "No API key provided. Enter your Anthropic API key in the ARCHITECT key field."
+    });
   }
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        "Content-Type":            "application/json",
-        "x-api-key":               apiKey,
-        "anthropic-version":       "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true",
+        "Content-Type":      "application/json",
+        "x-api-key":         apiKey,
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify(req.body),
     });
@@ -37,4 +40,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Proxy error", detail: err.message });
   }
 }
-
