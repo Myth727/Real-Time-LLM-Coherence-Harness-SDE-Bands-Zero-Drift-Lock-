@@ -6,7 +6,7 @@ import {
 
 // ═══════════════════════════════════════════════════════════════
 //  FILE: ARCHITECT.jsx
-//  ARCHITECT — UNIVERSAL COHERENCE ENGINE · V2.1
+//  ARCHITECT — UNIVERSAL COHERENCE ENGINE · V2.2
 //  © Hudson & Perry Research
 //  Authors: David Hudson (@RaccoonStampede) · David Perry (@Prosperous727)
 //
@@ -209,7 +209,7 @@ function sdePercentilesAtStep(paths,step) {
 // subtracted from the drift term via delta. When variance is high, the
 // process model predicts stronger mean reversion, tightening the estimate.
 // Couples the Kalman process model with the GARCH variance output.
-// ── Unscented Kalman Filter (UKF) — V2.1 ─────────────────────
+// ── Unscented Kalman Filter (UKF) — V2.2 ─────────────────────
 // Replaces linear Kalman. Handles nonlinear coherence dynamics correctly.
 // Uses sigma points instead of linearization — more accurate at extremes.
 // Signature identical to old kalmanStep — drop-in replacement.
@@ -485,7 +485,7 @@ function computeCoherence(newContent,history,weights,repThresh) {
   return Math.min(Math.max((w.tfidf*vocab+w.jsd*jsdScore+w.length*lenScore+w.structure*struct+w.persistence*persist)*repetitionPenalty,.30),.99);
 }
 
-// ── Semantic Coherence — V2.1 ──────────────────────────────────
+// ── Semantic Coherence — V2.2 ──────────────────────────────────
 // Uses embeddings from Web Worker (all-MiniLM-L6-v2).
 // Falls back to TF-IDF if embedder not ready.
 function cosineSimilarityVec(a, b) {
@@ -595,7 +595,7 @@ function buildDriftGateInjection(smoothedVar,cfg) {
 
 
 // ═══════════════════════════════════════════════════════════════
-//  V2.1 ENGINE MODULES
+//  V2.2 ENGINE MODULES
 // ═══════════════════════════════════════════════════════════════
 const AT_PROFILES={
   code:{temperature:0.15,top_p:0.80,frequency_penalty:0.20},
@@ -674,6 +674,52 @@ const THEMES={
 };
 function loadDisplayPrefs(){try{const s=localStorage.getItem("arch_dp");return s?JSON.parse(s):{theme:"navy",fontSize:13,compactMode:false};}catch(e){return{theme:"navy",fontSize:13,compactMode:false};}}
 function saveDisplayPrefs(p){try{localStorage.setItem("arch_dp",JSON.stringify(p));}catch(e){}}
+
+
+// ===================================================================
+//  PINNED DOCUMENT SLOTS - V2.2
+//  Up to 3 docs pinned at session start. Injected into system prompt
+//  every turn - never pruned, never forgotten.
+// ===================================================================
+const MAX_PINNED_SLOTS = 3;
+const MAX_PINNED_CHARS = 40000;
+
+function loadPinnedDocs(){
+  try{const s=localStorage.getItem("arch_pinned");return s?JSON.parse(s):[];}
+  catch(e){return[];}
+}
+function savePinnedDocs(docs){
+  try{localStorage.setItem("arch_pinned",JSON.stringify(docs));}catch(e){}
+}
+function buildPinnedDocsInjection(docs){
+  if(!docs||!docs.length)return"";
+  const parts=docs.map((d,i)=>{
+    const label="PINNED_DOC_"+(i+1);
+    const trunc=d.truncated?" [truncated at 40KB - full document available on request]":"";
+    return"["+label+": "+d.name+" | "+(d.content.length/1000).toFixed(1)+"KB]\n"+d.content+trunc+"\n[/"+label+"]";
+  });
+  return"\n\n[PINNED REFERENCE DOCUMENTS - These documents are always available. Treat them as authoritative context throughout the entire session. Reference them directly when relevant.]\n"+parts.join("\n\n")+"\n[/PINNED REFERENCE DOCUMENTS]";
+}
+async function readFileForPin(file){
+  return new Promise((resolve)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      let text=e.target.result||"";
+      let truncated=false;
+      if(text.length>MAX_PINNED_CHARS){text=text.slice(0,MAX_PINNED_CHARS);truncated=true;}
+      resolve({
+        id:"pin_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),
+        name:file.name,
+        size:file.size,
+        content:text,
+        truncated,
+        addedAt:Date.now(),
+      });
+    };
+    reader.onerror=()=>resolve(null);
+    reader.readAsText(file);
+  });
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  PIPING ENGINE
@@ -906,7 +952,7 @@ function downloadSdePaths(livePaths, coherenceData, sessionId, nPaths, userKappa
 
 // ── System prompt ──────────────────────────────────────────────
 const BASE_SYSTEM =
-  `You are a highly precise technical assistant operating within ARCHITECT V2.1, a real-time AI coherence engine. `+
+  `You are a highly precise technical assistant operating within ARCHITECT V2.2, a real-time AI coherence engine. `+
   `Maintain strict logical consistency across all turns. Reference prior context explicitly when building on it. `+
   `When files are attached, analyze them thoroughly. `+
   `When RAG MEMORY is provided, treat it as recalled context. `+
@@ -945,9 +991,9 @@ function buildExportBlock(s) {
     :"  (empty)";
   const kappaNote=(userKappa??KAPPA)!==KAPPA?` ⚠ MODIFIED from 0.444`:"";
   const anchorNote=(userAnchor??RESONANCE_ANCHOR)!==RESONANCE_ANCHOR?` ⚠ MODIFIED from 623.81`:"";
-  return `START_MISSION_PROTOCOL: HUDSON_PERRY_DRIFT_ARCHITECT_V2.1
+  return `START_MISSION_PROTOCOL: HUDSON_PERRY_DRIFT_ARCHITECT_V2.2
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ARCHITECT — Universal Coherence Engine V2.1
+ARCHITECT — Universal Coherence Engine V2.2
 © Hudson & Perry Research
 ⚠ R&D ONLY — Proxy indicators, no warranty
 
@@ -1449,7 +1495,7 @@ function computeEfficiencyRatio(text, entropy) {
 const FRAMEWORK_CONTENT=`ARCHITECT — UNIVERSAL COHERENCE ENGINE
 TIME-VARYING ERROR DYNAMICS & AI COHERENCE ENGINE
 Authors: David Hudson (@RaccoonStampede) & David Perry (@Prosperous727)
-Version 3.6  |  V2.1  |  © 2026
+Version 3.6  |  V2.2  |  © 2026
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1598,7 +1644,7 @@ CONFIRMED: SDE math ✓ | Kalman ✓ | GARCH ✓ | TF-IDF+JSD ✓
 REQUIRES VALIDATION: C-score vs. human judgment | H-signal
 false positive rate | 623.81 Hz physical anchor
 
-V1.5.3–V2.1 ADDITIONS TO FRAMEWORK
+V1.5.3–V2.2 ADDITIONS TO FRAMEWORK
   GARCH preset tuning: per-preset omega/alpha/beta now applied.
   Epsilon param: mathEpsilon wired to cap_eff, chart bands, MATH tab.
   cfg threading: varCaution/Decoherence/Calm flow through pipe, gate,
@@ -1608,11 +1654,11 @@ V1.5.3–V2.1 ADDITIONS TO FRAMEWORK
     and Advanced Tab state survive session reload.
   Rewind: prev/next buttons use actual buffer bounds.
   All key values memoized. Model string: claude-sonnet-4-6.
-  V1.5.17–V2.1: Advanced Tab (CIR/Heston, Custom Rails, MHT Study,
+  V1.5.17–V2.2: Advanced Tab (CIR/Heston, Custom Rails, MHT Study,
     Poole CA Sim, DATL Heartbeat). CIRCUIT preset. SDE path viz.
     Circuit Signal sidebar. Mobile scroll fixed. Full pseudoscience
     cleanup — experimental framing behind consent gate. MessageBubble
-    memoized. All version strings normalized to V2.1.
+    memoized. All version strings normalized to V2.2.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1811,7 +1857,7 @@ A: Yes. CHAT downloads a clean text file with an audit table.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PART 8 — V1.5.x ADDITIONS (V1.5.0 → V2.1)
+PART 8 — V1.5.x ADDITIONS (V1.5.0 → V2.2)
 
 SDE PATH COUNT (TUNE → SDE SIMULATION PATHS)
   Default: 50 paths. Options: 5, 10, 20, 25, 50, 100, 200, 250, 300, 500.
@@ -2010,7 +2056,7 @@ const DisclaimerModal = React.memo(function DisclaimerModal({showDisclaimer,setS
         </div>
         <div style={{fontFamily:"Courier New, monospace",fontSize:8,
           color:"#4A6060",letterSpacing:1}}>
-          ARCHITECT — UNIVERSAL COHERENCE ENGINE V2.1 · READ IN FULL BEFORE PROCEEDING
+          ARCHITECT — UNIVERSAL COHERENCE ENGINE V2.2 · READ IN FULL BEFORE PROCEEDING
         </div>
       </div>
 
@@ -3194,7 +3240,7 @@ const TuneModal = React.memo(function TuneModal() {
         display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <span style={{fontFamily:"Courier New, monospace",fontSize:8,
           color:"#2E5070",letterSpacing:1}}>
-          ACTIVE: {PRESETS[activePreset]?.label??activePreset} · V2.1
+          ACTIVE: {PRESETS[activePreset]?.label??activePreset} · V2.2
         </span>
         <button onClick={()=>setShowTuning(false)}
           style={{padding:"4px 14px",background:"#EEF8F2",
@@ -3662,7 +3708,7 @@ const BookmarksModal = React.memo(function BookmarksModal() {
         </span>
         <span style={{fontFamily:"Courier New, monospace",fontSize:8,
           color:"#2E5070",letterSpacing:1}}>
-          V2.1 © HUDSON &amp; PERRY
+          V2.2 © HUDSON &amp; PERRY
         </span>
       </div>
     </div>
@@ -4035,13 +4081,13 @@ export default function HudsonPerryDriftV1() {
   // V1.5.9 fix #C: researchNotes converted to uncontrolled textarea
   const researchNotesRef=useRef("");
 
-  // ── V2.1: Embedder Web Worker ref ────────────────────────────
+  // ── V2.2: Embedder Web Worker ref ────────────────────────────
   // workerRef.current = { worker: Worker, ready: bool }
   const workerRef=useRef(null);
 
-  // ── V2.1: Provider + key storage state ───────────────────────
+  // ── V2.2: Provider + key storage state ───────────────────────
   const [provider,       setProvider]       = useState("anthropic");
-  // ── V2.1: Intelligence state ──────────────────────────────────
+  // ── V2.2: Intelligence state ──────────────────────────────────
   const [autoTuneEnabled,setAutoTuneEnabled]= useState(true);
   const [lastAutoTune,   setLastAutoTune]   = useState(null);
   const [feedbackState,  setFeedbackState]  = useState(()=>loadFeedbackState());
@@ -4049,13 +4095,14 @@ export default function HudsonPerryDriftV1() {
   const [reflexiveResult,setReflexiveResult]= useState(null);
   const [reflexiveLoading,setReflexiveLoading]=useState(false);
   const [domainAnchor,   setDomainAnchor]   = useState("none");
+  const [pinnedDocs,     setPinnedDocs]     = useState(()=>loadPinnedDocs());
   const [keySaved,       setKeySaved]       = useState(false);   // true when saved to localStorage
   const [embedderStatus, setEmbedderStatus] = useState("init");  // "init"|"loading"|"ready"|"error"
   useEffect(()=>{
     if (rewindTurn===null) chatEndRef.current?.scrollIntoView({behavior:"smooth"});
   },[messages,rewindTurn]);
 
-  // ── V2.1: Load saved key + provider from localStorage on mount ──
+  // ── V2.2: Load saved key + provider from localStorage on mount ──
   useEffect(()=>{
     try {
       const savedKey      = localStorage.getItem("architect_api_key");
@@ -4065,7 +4112,7 @@ export default function HudsonPerryDriftV1() {
     } catch(e) {}
   },[]);
 
-  // ── V2.1: Initialize embedder Web Worker on mount ─────────────
+  // ── V2.2: Initialize embedder Web Worker on mount ─────────────
   useEffect(()=>{
     if (typeof window === "undefined") return;
     try {
@@ -4496,7 +4543,8 @@ export default function HudsonPerryDriftV1() {
         ?`\n\n[USER CUSTOM RAILS]\n${userCustomRails.trim()}\n[END CUSTOM RAILS]`
         :"";
       const anchorInj=buildAnchorInjection(domainAnchor);
-      const systemPrompt=BASE_SYSTEM+HARNESS_INJECTIONS[harnessMode]+ragInj+pipeInj+gateInj+muteInj+railsInj+anchorInj;
+      const pinnedInj=buildPinnedDocsInjection(pinnedDocs);
+      const systemPrompt=BASE_SYSTEM+pinnedInj+HARNESS_INJECTIONS[harnessMode]+ragInj+pipeInj+gateInj+muteInj+railsInj+anchorInj;
       const needsHardTrim=["deep","extreme"].includes(harnessMode)&&pruned.length>6;
       const trimmed=needsHardTrim?[...pruned.slice(0,4),...pruned.slice(-6)]:pruned;
       // Guard: Anthropic API requires the last message to be role:"user".
@@ -4515,7 +4563,7 @@ export default function HudsonPerryDriftV1() {
       const msgLen=apiMessages.reduce((s,m)=>s+(typeof m.content==="string"?m.content.length:JSON.stringify(m.content).length),0);
       setTokenEstimate(Math.round((sysLen+msgLen)/4));
 
-      // V2.1: AutoTune
+      // V2.2: AutoTune
       let atParams={};
       if(autoTuneEnabled){
         const uText=typeof userMessage==="string"?userMessage:JSON.stringify(userMessage);
@@ -5265,9 +5313,9 @@ export default function HudsonPerryDriftV1() {
       {/* HEADER */}
       <div style={S.header}>
         <div>
-          <div style={S.title}>ARCHITECT — UNIVERSAL COHERENCE ENGINE V2.1</div>
+          <div style={S.title}>ARCHITECT — UNIVERSAL COHERENCE ENGINE V2.2</div>
           <div style={S.subtitle}>
-            © HUDSON &amp; PERRY RESEARCH · MUTE:{featMute?"ON":"OFF"} · GATE:{featGate?"ON":"OFF"} · PIPE:{featPipe?"ON":"OFF"} · REWIND:ON · V2.1
+            © HUDSON &amp; PERRY RESEARCH · MUTE:{featMute?"ON":"OFF"} · GATE:{featGate?"ON":"OFF"} · PIPE:{featPipe?"ON":"OFF"} · REWIND:ON · V2.2
           </div>
           <div style={{display:"flex",gap:10,marginTop:3}}>
             <a href="https://x.com/RaccoonStampede" target="_blank" rel="noreferrer"
@@ -5448,7 +5496,7 @@ export default function HudsonPerryDriftV1() {
           }
         </div>
       )}
-      {/* PROVIDER + API KEY — V2.1 */}
+      {/* PROVIDER + API KEY — V2.2 */}
       <div style={{display:"flex",flexDirection:"column",gap:4,padding:"4px 20px"}}>
         {/* Provider selector row */}
         <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -5570,7 +5618,7 @@ export default function HudsonPerryDriftV1() {
         <div style={{background:"#F8FAFC",borderBottom:"1px solid #1EAAAA44",padding:"12px 20px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <span style={{...S.sectionTitle,marginBottom:0,color:"#0A7878"}}>
-              MISSION PROTOCOL — HUDSON &amp; PERRY ARCHITECT V2.1
+              MISSION PROTOCOL — HUDSON &amp; PERRY ARCHITECT V2.2
             </span>
             <button style={{...S.exportBtn,background:copied?"#E4F4F4":"transparent",
               color:copied?"#178040":"#0A7878"}} onClick={handleCopyExport}>
@@ -5627,7 +5675,7 @@ export default function HudsonPerryDriftV1() {
               <div style={{margin:"auto",textAlign:"center",
                 fontFamily:"Courier New, monospace",fontSize:11,lineHeight:2}}>
                 <div style={{fontSize:28,marginBottom:12,opacity:.3}}>⬡</div>
-                <div style={{opacity:.5,marginBottom:4}}>ARCHITECT — UNIVERSAL COHERENCE ENGINE V2.1</div>
+                <div style={{opacity:.5,marginBottom:4}}>ARCHITECT — UNIVERSAL COHERENCE ENGINE V2.2</div>
                 <div style={{fontSize:9,letterSpacing:2,opacity:.4}}>
                   SDE · KALMAN · GARCH · TF-IDF · JSD · RAG · PIPE · MUTE · GATE · REWIND · ARCHITECT
                 </div>
@@ -5741,6 +5789,53 @@ export default function HudsonPerryDriftV1() {
               borderTopColor:"#40D08033",
             }}>{statusMessage}</div>
           )}
+
+          {/* V2.2: Pinned Document Slots */}
+          <div style={{padding:"0 12px 4px",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",borderTop:"1px solid #1A3050",paddingTop:6}}>
+            <span style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#2E5070",letterSpacing:2,flexShrink:0}}>PINNED</span>
+            {pinnedDocs.map((doc)=>(
+              <div key={doc.id} style={{display:"flex",alignItems:"center",gap:3,
+                padding:"2px 7px",background:"#0A1C2A",borderRadius:4,
+                border:"1px solid #0A787866",maxWidth:200,minWidth:0}}>
+                <span style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#0A7878",
+                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:130}}>
+                  [{(doc.content.length/1000).toFixed(1)}K] {doc.name}
+                </span>
+                {doc.truncated&&<span title="Truncated at 40KB" style={{color:"#C87000",fontSize:8,flexShrink:0}}>!</span>}
+                <button onClick={()=>{const nd=pinnedDocs.filter(d=>d.id!==doc.id);setPinnedDocs(nd);savePinnedDocs(nd);}}
+                  style={{background:"none",border:"none",color:"#C81030",cursor:"pointer",
+                    fontSize:11,padding:"0 0 0 3px",lineHeight:1,flexShrink:0}}>x</button>
+              </div>
+            ))}
+            {pinnedDocs.length<MAX_PINNED_SLOTS&&Array.from({length:MAX_PINNED_SLOTS-pinnedDocs.length},(_,i)=>(
+              <label key={"ps-"+i} style={{
+                display:"flex",alignItems:"center",gap:3,padding:"2px 7px",
+                background:"transparent",borderRadius:4,border:"1px dashed #1A3050",
+                cursor:"pointer",fontFamily:"Courier New,monospace",fontSize:7,color:"#2E5070",
+                position:"relative"}}>
+                + SLOT {pinnedDocs.length+i+1}
+                <input type="file"
+                  accept=".txt,.md,.json,.csv,.xml,.js,.ts,.jsx,.tsx,.py,.html,.css"
+                  style={{position:"absolute",width:1,height:1,opacity:0,pointerEvents:"none"}}
+                  onChange={async e=>{
+                    const file=e.target.files&&e.target.files[0];
+                    if(!file)return;
+                    const doc=await readFileForPin(file);
+                    if(!doc)return;
+                    const nd=[...pinnedDocs,doc];
+                    setPinnedDocs(nd);savePinnedDocs(nd);
+                    e.target.value="";
+                  }}/>
+              </label>
+            ))}
+            {pinnedDocs.length>0&&(
+              <button onClick={()=>{setPinnedDocs([]);savePinnedDocs([]);}}
+                style={{background:"none",border:"none",color:"#2E5070",cursor:"pointer",
+                  fontFamily:"Courier New,monospace",fontSize:7,padding:"0 4px",letterSpacing:1}}>
+                CLEAR
+              </button>
+            )}
+          </div>
 
           <div style={S.inputRow}>
             <label style={{...S.attachBtn,
@@ -6262,4 +6357,4 @@ export default function HudsonPerryDriftV1() {
     </TuneCtx.Provider>
   );
 }
-// V2.1: mounted via Next.js pages/index.tsx
+// V2.2: mounted via Next.js pages/index.tsx
