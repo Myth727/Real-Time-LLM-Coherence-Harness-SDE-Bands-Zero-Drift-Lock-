@@ -3960,7 +3960,7 @@ export default function HudsonPerryDriftV1() {
     if (typeof window === "undefined") return;
     try {
       setEmbedderStatus("loading");
-      const worker = new Worker("/embedder.worker.js");
+      const worker = new Worker("/embedder.worker.js", { type: "module" });
       workerRef.current = { worker, ready: false };
       worker.onmessage = (e) => {
         if (e.data.type==="ready") {
