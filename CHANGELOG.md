@@ -3,11 +3,11 @@
 © 2026 Hudson & Perry Research
 𝕏 @RaccoonStampede (David Hudson) · 𝕏 @Prosperous727 (David Perry)
 
-## V2.1
+## V2.2
 
 ### AutoTune · Feedback Loop · Reflexive Analysis · Knowledge Anchors · Display Preferences · Compressed Pipe
 
-This is the first intelligence upgrade to ARCHITECT. Previous versions monitored and corrected. V2.1 optimizes, learns, and self-improves.
+This is the first intelligence upgrade to ARCHITECT. Previous versions monitored and corrected. V2.2 optimizes, learns, and self-improves.
 
 **Step 1 — Compressed Pipe (60–70% fewer tokens)**
 
@@ -78,6 +78,23 @@ Full DISPLAY & INTELLIGENCE tab replacing the previous placeholder:
 ---
 
 ---
+
+---
+
+### V2.2 — Persistent Document Slots
+
+Up to 3 documents can now be pinned to a session and injected into the system prompt on every single turn. They never get pruned, never get forgotten, and survive context compression, rewind, and long sessions.
+
+**How it works:**
+- A `PINNED` strip above the message input shows 3 slot buttons
+- Tap any empty slot to upload a file (txt, md, json, csv, js, ts, py, html, and more)
+- Filled slots show filename and size as teal chips with an `×` to remove
+- Docs over 40KB are truncated with a notice; docs under 40KB load in full
+- All pinned docs inject into the system prompt labeled `[PINNED_DOC_1: filename]...[/PINNED_DOC_1]` — positioned before harness injections, before RAG, before everything
+- Contents persist to `localStorage` — Vercel version retains pinned docs across sessions
+
+**What this solves:** AI "forgetting" documents mid-session. The document is re-injected from local storage on every turn regardless of context window state. The AI cannot forget it.
+
 
 ## V2.0
 

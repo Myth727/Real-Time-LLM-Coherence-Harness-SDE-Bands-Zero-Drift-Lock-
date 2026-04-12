@@ -1,8 +1,8 @@
 # ARCHITECT — Universal Coherence Engine
 
-## Full-stack inference-time LLM stability and intelligence layer
+## Full-stack LLM coherence engine with AutoTune, feedback learning, and reflexive analysis. Monte Carlo SDE bands, Kalman, GARCH, per-turn scoring, signal detection, domain anchoring. V2.2 — paste into Claude or deploy on Vercel.
 
-**V2.1** · © 2026 Hudson & Perry Research
+**V2.2** · © 2026 Hudson & Perry Research
 **Authors:** David Hudson ([@RaccoonStampede](https://x.com/RaccoonStampede)) · David Perry ([@Prosperous727](https://x.com/Prosperous727))
 **License:** MIT · [Live Demo](https://architect-universal-coherence-engin.vercel.app/)
 
@@ -31,21 +31,22 @@ Create an artifact from this file. Run it exactly as-is.
 
 Works immediately. No account, no server, no install.
 
-**What you get:** Full ARCHITECT with coherence scoring, Kalman filter, GARCH, SDE bands, all signal detection, all presets, AutoTune, feedback loop, reflexive analysis, knowledge anchors, display preferences, session rewind, research export.
+**What you get:** Full ARCHITECT — coherence scoring, Kalman filter, GARCH, Monte Carlo SDE bands, all signal detection, all presets, AutoTune, feedback loop, reflexive analysis, knowledge anchors, persistent document slots, display preferences, session rewind, research export.
 
 ---
 
-## ▶ Option 2 — Deploy on Vercel (V2.1, any browser)
+## ▶ Option 2 — Deploy on Vercel (V2.2, any browser)
 
 **Live demo:** [architect-universal-coherence-engin.vercel.app](https://architect-universal-coherence-engin.vercel.app/)
 
-The same `ARCHITECT.jsx` lives at `components/ARCHITECT.jsx` inside the Next.js project. Vercel activates the extra capabilities that require a server and Web Worker.
+The same `ARCHITECT.jsx` lives at `components/ARCHITECT.jsx` inside the Next.js project. Vercel activates extra capabilities that require a server and Web Worker.
 
-**Additional features on Vercel:**
+**Additional on Vercel:**
 - **Semantic coherence scoring** — all-MiniLM-L6-v2 ONNX neural embeddings (~23MB, cached in IndexedDB). Meaning-based, not word-based.
-- **Unscented Kalman Filter (UKF)** — sigma-point propagation handles nonlinear drift dynamics
+- **Unscented Kalman Filter (UKF)** — sigma-point propagation handles nonlinear drift
 - **Multi-provider** — Anthropic, OpenAI, or Grok. Your key, your choice.
 - **Key persistence** — API key saved to browser. Type it once.
+- **Cross-session memory** — pinned documents, display preferences, and learned feedback profiles persist across sessions
 - **Works on any device** — no Claude account needed
 
 ### Deploy your own instance
@@ -77,7 +78,13 @@ sdk/
 
 **Core engine:** Per-turn coherence scoring → Kalman-smoothed trajectory → GARCH(1,1) variance modeling → Monte Carlo SDE uncertainty bands → pipe injection → post-audit loop → drift escalation → corrective directives.
 
-**V2.1 intelligence layer:** AutoTune selects optimal generation parameters per turn based on context detection. Feedback loop learns your preferences via EMA across sessions. Reflexive analysis sends session coherence data to the LLM and returns concrete configuration improvements. Knowledge anchors calibrate drift detection to your domain.
+**V2.2 intelligence layer:**
+- **AutoTune** — detects conversation context per turn, selects optimal temperature and sampling parameters automatically
+- **Feedback loop** — thumbs up/down per response learns your preferences via EMA, persists across sessions
+- **Reflexive analysis** — "Analyze Session" sends coherence fingerprint to the LLM and returns concrete config improvements
+- **Knowledge anchors** — domain vocabulary (Medical, Legal, Engineering, Finance, Research) calibrates drift detection to your field
+- **Persistent document slots** — pin up to 3 documents that stay in context every turn, never forgotten
+- **Display preferences** — 4 themes, font size slider, compact mode for phones
 
 **Signal detection:** 6 hallucination proxies (H-signals), 7 behavioral proxies (B-signals), EWMA trend tracking, semantic anchor distance monitoring, Integrity Floor breach detection.
 
@@ -98,6 +105,7 @@ sdk/
 | Feedback loop (EMA learning) | ✓ | ✓ |
 | Reflexive session analysis | ✓ | ✓ |
 | Knowledge Anchors (domain calibration) | ✓ | ✓ |
+| Persistent Document Slots (3 slots) | ✓ session | ✓ cross-session |
 | Display preferences (theme, font, compact) | ✓ | ✓ |
 | H-signals + B-signals | ✓ | ✓ |
 | Session health, rewind, RAG | ✓ | ✓ |
@@ -105,6 +113,7 @@ sdk/
 | Framework Mode (HUDSON / STANDARD) | ✓ | ✓ |
 | Multi-provider (OpenAI, Grok) | — | ✓ |
 | API key persistence | — | ✓ |
+| Cross-session memory | — | ✓ |
 | Works without Claude account | — | ✓ |
 
 ---
