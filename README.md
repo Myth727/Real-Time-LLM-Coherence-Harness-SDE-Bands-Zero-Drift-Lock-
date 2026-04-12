@@ -38,8 +38,7 @@ Works immediately. No account, no server, no install.
 
 ## ▶ Option 2 — Deploy on Vercel (full V2.0, any browser)
 
-**Live demo:** [architect-coherence-engine.vercel.app](https://architect-coherence-engine-exaly2fuv.vercel.app)
-*(Replace this URL with your own deployment URL)*
+**Live demo:** [architect-universal-coherence-engin.vercel.app](https://architect-universal-coherence-engin.vercel.app/)
 
 The same `ARCHITECT.jsx` is used here — it lives at `components/ARCHITECT.jsx` inside the Next.js project. Vercel activates the extra V2.0 features that require a server and Web Worker.
 
