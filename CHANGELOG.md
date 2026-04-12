@@ -3,6 +3,27 @@
 © 2026 Hudson & Perry Research
 𝕏 @RaccoonStampede (David Hudson) · 𝕏 @Prosperous727 (David Perry)
 
+## V2.0
+
+### Vercel Deployment — Semantic Embeddings, UKF, Multi-Provider
+
+Production Next.js deployment. Runs at any URL, any browser, any device. The root `ARCHITECT.jsx` remains the canonical V1.5.43 artifact and continues to work unchanged inside Claude. V2.0 is a parallel deployment path built on top of it.
+
+**Core upgrades:**
+- **Semantic coherence scoring**: TF-IDF + JSD replaced by all-MiniLM-L6-v2 ONNX embeddings (~23MB, cached in IndexedDB after first load). Meaning-based similarity catches drift that vocabulary matching misses, and avoids false drift alerts when the AI legitimately paraphrases.
+- **Unscented Kalman Filter (UKF)**: Linear Kalman replaced with sigma-point propagation. Handles the nonlinear coherence SDE more accurately at drift extremes.
+- **Multi-provider support**: Anthropic, OpenAI, and Grok supported via a single serverless proxy. Response format normalized so all downstream ARCHITECT logic works unchanged regardless of provider.
+- **Key persistence**: API key and provider choice saved to browser localStorage. Save / Clear / Change controls. Key never stored server-side.
+- **Web Worker**: Embedder runs entirely off the main thread — UI never blocks during model inference (~50–100ms per embedding after warmup).
+
+**New files (in repo):**
+- `components/ARCHITECT.jsx` — V2.0 Next.js component
+- `pages/index.tsx` — Next.js entry point + window.storage polyfill
+- `pages/api/proxy.ts` — multi-provider serverless proxy (Anthropic, OpenAI, Grok)
+- `public/embedder.worker.js` — ONNX Web Worker for all-MiniLM-L6-v2
+
+---
+
 ## V1.5.43
 
 ### Chart — EWMA trend line & Anchor distance line; Sidebar — Momentum & Anchor dist rows
