@@ -2367,17 +2367,21 @@ const TuneModal = React.memo(function TuneModal() {
       </div>
 
       {/* TUNE TAB BAR */}
-      <div style={{display:"flex",borderBottom:"1px solid #1A3050",background:"#FAFCFF",flexShrink:0}}>
+      <div style={{display:"flex",borderBottom:"2px solid #C8D8E8",background:"#F0F4FA",flexShrink:0}}>
         {[["presets","PRESETS","#178040"],["features","FEATURES","#1560B0"],
           ["math","MATH","#0A7878"],
           ["display","DISPLAY","#906000"],
           ["advanced","⚗ ADVANCED","#C81030"],
         ].map(([tab,label,col])=>(
           <button key={tab} onClick={()=>setTuneTab(tab)} style={{
-            flex:1,padding:"8px 2px",background:"none",cursor:"pointer",
+            flex:1,padding:"9px 2px",cursor:"pointer",
             fontFamily:"Courier New,monospace",fontSize:8,letterSpacing:1,
-            border:"none",borderBottom:`2px solid ${tuneTab===tab?col:"transparent"}`,
-            color:tuneTab===tab?col:"#2E5070",transition:"color .15s"}}>
+            border:"none",
+            borderBottom:`3px solid ${tuneTab===tab?col:"transparent"}`,
+            background:tuneTab===tab?"#FFFFFF":"transparent",
+            color:tuneTab===tab?col:"#3A5070",
+            fontWeight:tuneTab===tab?"bold":"normal",
+            transition:"all .15s"}}>
             {label}
           </button>
         ))}
@@ -4211,9 +4215,40 @@ export default function HudsonPerryDriftV1() {
   const [calcGarchO,     setCalcGarchO]     = useState(0.02);
   const [calcGarchA,     setCalcGarchA]     = useState(0.15);
   const [calcGarchB,     setCalcGarchB]     = useState(0.80);
+  const [calcExpr,       setCalcExpr]       = useState("");
+  const [calcResult,     setCalcResult]     = useState(null);
+  const [calcHistory,    setCalcHistory]    = useState([]);
   const [metaMessages,   setMetaMessages]   = useState([]);
   const [metaInput,      setMetaInput]      = useState("");
   const [metaLoading,    setMetaLoading]    = useState(false);
+
+  const sendMetaMsg = useCallback(()=>{
+    if(!metaInput.trim()||metaLoading||!apiKey.trim())return;
+    const userMsg=metaInput.trim();
+    setMetaInput("");
+    const newMetaMsgs=[...metaMessages,{role:"user",content:userMsg}];
+    setMetaMessages(newMetaMsgs);
+    setMetaLoading(true);
+    const avgScore=coherenceData.length?coherenceData.reduce((s,d)=>s+d.raw,0)/coherenceData.length:0;
+    const driftEvts=coherenceData.filter(d=>d.harnessActive).length;
+    const hSigs=coherenceData.filter(d=>(d.hCount||0)>0).length;
+    const bSigs=coherenceData.filter(d=>(d.bCount||0)>0).length;
+    const liveCtx="LIVE SESSION DATA:\nPreset: "+activePreset+"\nTurns: "+coherenceData.length+"\nAvg coherence: "+avgScore.toFixed(3)+"\nDrift events: "+driftEvts+"\nH-signal turns: "+hSigs+" B-signal turns: "+bSigs+(lastAutoTune?"\nLast AutoTune: "+lastAutoTune.type+" T="+lastAutoTune.params.temperature.toFixed(2):"")+(sessionMemory?"\nSession memory active: turns 1-"+sessionMemory.throughTurn:"")+("\nRecent scores: ["+coherenceData.slice(-6).map(d=>d.raw.toFixed(3)).join(", ")+"]");
+    const metaSysPrompt=META_ARCHITECT_KNOWLEDGE+"\n\n"+liveCtx;
+    fetch(API_ENDPOINT,{method:"POST",
+      headers:{"Content-Type":"application/json","anthropic-version":"2023-06-01",
+        "x-architect-provider":provider,"x-api-key":apiKey.trim()},
+      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:600,
+        system:metaSysPrompt,
+        messages:newMetaMsgs.map(m=>({role:m.role,content:m.content}))})})
+    .then(r=>r.json())
+    .then(data=>{
+      const reply=((data.content||[]).map(c=>c.text||"")).join("").trim();
+      if(reply)setMetaMessages(prev=>[...prev,{role:"assistant",content:reply}]);
+    })
+    .catch(()=>setMetaMessages(prev=>[...prev,{role:"assistant",content:"Error — check API key and connection."}]))
+    .finally(()=>setMetaLoading(false));
+  },[metaInput,metaLoading,apiKey,metaMessages,coherenceData,activePreset,lastAutoTune,sessionMemory,provider]);
   const [memoryLoading,  setMemoryLoading]  = useState(false);
   const [pinnedDocs,     setPinnedDocs]     = useState(()=>loadPinnedDocs());
   const [keySaved,       setKeySaved]       = useState(false);   // true when saved to localStorage
@@ -5676,37 +5711,41 @@ export default function HudsonPerryDriftV1() {
 
       {/* V2.2: META Panel */}
       {showMeta&&(
-        <div style={{margin:"6px 20px 0",border:"1px solid #8040C044",borderRadius:5,
-          background:"#06090F",display:"flex",flexDirection:"column",maxHeight:380}}>
-          <div style={{padding:"6px 10px",borderBottom:"1px solid #8040C030",
+        <div style={{margin:"6px 20px 0",border:"1px solid #9060C0",borderRadius:5,
+          background:"#FFFFFF",display:"flex",flexDirection:"column",maxHeight:400,
+          boxShadow:"0 2px 8px rgba(128,64,192,0.12)"}}>
+          <div style={{padding:"7px 10px",borderBottom:"2px solid #D0B8E8",
+            background:"#F4EEFF",borderRadius:"5px 5px 0 0",
             display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-            <div style={{fontFamily:"Courier New,monospace",fontSize:8,color:"#8040C0",letterSpacing:2}}>
+            <div style={{fontFamily:"Courier New,monospace",fontSize:8,color:"#6020A0",
+              letterSpacing:2,fontWeight:"bold"}}>
               META — ARCHITECT SELF-ANALYSIS
             </div>
             {metaMessages.length>0&&(
               <button onClick={()=>setMetaMessages([])}
-                style={{background:"none",border:"none",color:"#2E5070",cursor:"pointer",
+                style={{background:"none",border:"none",color:"#6020A0",cursor:"pointer",
                   fontFamily:"Courier New,monospace",fontSize:7,padding:0}}>CLEAR</button>
             )}
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"8px 10px",display:"flex",
-            flexDirection:"column",gap:6,minHeight:80}}>
+            flexDirection:"column",gap:6,minHeight:80,background:"#FDFBFF"}}>
             {metaMessages.length===0&&(
-              <div style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#2E5070",
-                lineHeight:1.6,padding:"4px 0"}}>
-                {"Ask anything about this session. Examples:\n\u2022 Why did coherence drop at turn 7?\n\u2022 What preset would work better here?\n\u2022 Explain what the GARCH variance means right now.\n\u2022 What should I change to reduce drift?"}
+              <div style={{fontFamily:"Courier New,monospace",fontSize:7.5,color:"#4A3A6A",
+                lineHeight:1.8,padding:"6px 8px",background:"#F0E8FF",borderRadius:4,
+                border:"1px solid #D0B8E8"}}>
+                {"Ask anything about this session:\n\u2022 Why did coherence drop at turn 7?\n\u2022 What preset fits this session better?\n\u2022 What does the variance spike mean right now?\n\u2022 What should I change to reduce drift?"}
               </div>
             )}
             {metaMessages.map((m,i)=>(
               <div key={i} style={{
-                padding:"5px 8px",borderRadius:4,
-                background:m.role==="user"?"#0A1422":"#0E0A1A",
-                border:"1px solid "+(m.role==="user"?"#1A3050":"#8040C030"),
+                padding:"6px 10px",borderRadius:6,
+                background:m.role==="user"?"#EEF0FF":"#F8F4FF",
+                border:"1px solid "+(m.role==="user"?"#B0B8E8":"#D0B8E8"),
                 alignSelf:m.role==="user"?"flex-end":"flex-start",
-                maxWidth:"90%",
+                maxWidth:"92%",
               }}>
-                <div style={{fontFamily:"Courier New,monospace",fontSize:7,
-                  color:m.role==="user"?"#C8D8E8":"#C0A8E8",lineHeight:1.5,
+                <div style={{fontFamily:"Courier New,monospace",fontSize:8,
+                  color:m.role==="user"?"#1E2060":"#3A1060",lineHeight:1.6,
                   whiteSpace:"pre-wrap"}}>{m.content}</div>
               </div>
             ))}
@@ -5715,74 +5754,120 @@ export default function HudsonPerryDriftV1() {
                 padding:"4px 0",letterSpacing:1}}>ANALYZING...</div>
             )}
           </div>
-          <div style={{padding:"6px 8px",borderTop:"1px solid #8040C020",
-            display:"flex",gap:6,flexShrink:0}}>
+          <div style={{padding:"7px 8px",borderTop:"1px solid #D0B8E8",
+            background:"#F4EEFF",display:"flex",gap:6,flexShrink:0,
+            borderRadius:"0 0 5px 5px"}}>
             <textarea
               value={metaInput}
               onChange={e=>setMetaInput(e.target.value)}
               onKeyDown={e=>{
-                if(e.key==="Enter"&&!e.shiftKey){
-                  e.preventDefault();
-                  if(!metaInput.trim()||metaLoading||!apiKey.trim())return;
-                  const userMsg=metaInput.trim();
-                  setMetaInput("");
-                  const newMetaMsgs=[...metaMessages,{role:"user",content:userMsg}];
-                  setMetaMessages(newMetaMsgs);
-                  setMetaLoading(true);
-                  // Build META context from live session data
-                  const avgScore=coherenceData.length?coherenceData.reduce((s,d)=>s+d.raw,0)/coherenceData.length:0;
-                  const driftEvts=coherenceData.filter(d=>d.harnessActive).length;
-                  const hSigs=coherenceData.filter(d=>(d.hCount||0)>0).length;
-                  const bSigs=coherenceData.filter(d=>(d.bCount||0)>0).length;
-                  const liveCtx="LIVE SESSION DATA:\nPreset: "+activePreset+"\nTurns: "+coherenceData.length+"\nAvg coherence: "+avgScore.toFixed(3)+"\nDrift events: "+driftEvts+"\nH-signal turns: "+hSigs+" B-signal turns: "+bSigs+(lastAutoTune?"\nLast AutoTune: "+lastAutoTune.type+" T="+lastAutoTune.params.temperature.toFixed(2):"")+(sessionMemory?"\nSession memory active: turns 1-"+sessionMemory.throughTurn:"")+"\nRecent scores: ["+coherenceData.slice(-6).map(d=>d.raw.toFixed(3)).join(", ")+"]";
-                  const metaSysPrompt=META_ARCHITECT_KNOWLEDGE+"\n\n"+liveCtx;
-                  const metaHistory=newMetaMsgs.map(m=>({role:m.role,content:m.content}));
-                  fetch(API_ENDPOINT,{method:"POST",
-                    headers:{"Content-Type":"application/json","anthropic-version":"2023-06-01",
-                      "x-architect-provider":provider,"x-api-key":apiKey.trim()},
-                    body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:600,
-                      system:metaSysPrompt,messages:metaHistory})})
-                  .then(r=>r.json())
-                  .then(data=>{
-                    const reply=((data.content||[]).map(c=>c.text||"").join("")).trim();
-                    if(reply)setMetaMessages(prev=>[...prev,{role:"assistant",content:reply}]);
-                  })
-                  .catch(()=>setMetaMessages(prev=>[...prev,{role:"assistant",content:"Error — check API key and connection."}]))
-                  .finally(()=>setMetaLoading(false));
-                }
+                if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMetaMsg();}
               }}
-              placeholder="Ask about this session... (Enter to send)"
+              placeholder="Ask about this session..."
               rows={2}
               style={{flex:1,fontFamily:"Courier New,monospace",fontSize:8,
-                background:"#0A1422",color:"#C8D8E8",border:"1px solid #1A3050",
-                borderRadius:3,padding:"4px 7px",resize:"none",
-                outline:"none"}}/>
+                background:"#FFFFFF",color:"#1E0840",border:"1px solid #B090D8",
+                borderRadius:3,padding:"4px 7px",resize:"none",outline:"none"}}/>
+            <button
+              disabled={!metaInput.trim()||metaLoading||!apiKey.trim()}
+              onClick={sendMetaMsg}
+              style={{
+                padding:"0 10px",fontFamily:"Courier New,monospace",fontSize:8,
+                cursor:!metaInput.trim()||metaLoading||!apiKey.trim()?"not-allowed":"pointer",
+                background:"#8040C0",border:"none",borderRadius:3,
+                color:"#FFFFFF",fontWeight:"bold",flexShrink:0,
+                opacity:!metaInput.trim()||metaLoading?0.4:1,
+                letterSpacing:1,
+              }}>
+              {metaLoading?"...":"SEND"}
+            </button>
           </div>
         </div>
       )}
 
       {/* V2.2: Quick Tools Drawer */}
       {showTools&&(
-        <div style={{margin:"6px 20px 0",border:"1px solid #0A787844",borderRadius:5,background:"#06090F"}}>
+        <div style={{margin:"6px 20px 0",border:"1px solid #7AAAC8",borderRadius:5,background:"#FFFFFF",boxShadow:"0 2px 8px rgba(0,0,0,0.12)"}}>
           {/* Tab bar */}
-          <div style={{display:"flex",borderBottom:"1px solid #0A787830"}}>
+          <div style={{display:"flex",borderBottom:"2px solid #B8CCE0",background:"#EEF4FA",borderRadius:"5px 5px 0 0"}}>
             {[["calc","CALC"],["verify","VERIFY"],["export","EXPORT"]].map(([tab,label])=>(
               <button key={tab} onClick={()=>setToolsTab(tab)}
-                style={{flex:1,padding:"5px 4px",background:"none",border:"none",cursor:"pointer",
-                  fontFamily:"Courier New,monospace",fontSize:7,letterSpacing:1,
-                  color:toolsTab===tab?"#0A7878":"#2E5070",
-                  borderBottom:toolsTab===tab?"2px solid #0A7878":"2px solid transparent"}}>
+                style={{flex:1,padding:"7px 4px",cursor:"pointer",
+                  fontFamily:"Courier New,monospace",fontSize:8,letterSpacing:1,fontWeight:"bold",
+                  border:"none",
+                  borderBottom:toolsTab===tab?"3px solid #0A7878":"3px solid transparent",
+                  background:toolsTab===tab?"#FFFFFF":"transparent",
+                  color:toolsTab===tab?"#0A7878":"#1E3C5C",
+                  transition:"all .15s"}}>
                 {label}
               </button>
             ))}
           </div>
 
-          {/* CALC TAB — SDE/GARCH parameter preview */}
+          {/* CALC TAB */}
           {toolsTab==="calc"&&(
-            <div style={{padding:"8px 10px"}}>
-              <div style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#2E5070",letterSpacing:1,marginBottom:8}}>
-                SDE / GARCH PARAMETER CALCULATOR
+            <div style={{padding:"10px 12px"}}>
+              <div style={{fontFamily:"Courier New,monospace",fontSize:8,color:"#0A7878",letterSpacing:2,marginBottom:10,fontWeight:"bold"}}>
+                SDE / GARCH CALCULATOR
               </div>
+
+              {/* Expression calculator */}
+              <div style={{marginBottom:12,padding:"8px 10px",background:"#F4F8FC",borderRadius:4,border:"1px solid #B8CCE0"}}>
+                <div style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#1E3C5C",letterSpacing:1,marginBottom:6}}>EXPRESSION CALCULATOR</div>
+                <div style={{display:"flex",gap:6,marginBottom:6}}>
+                  <input
+                    value={calcExpr}
+                    onChange={e=>setCalcExpr(e.target.value)}
+                    onKeyDown={e=>{
+                      if(e.key==="Enter"){
+                        try{
+                          // Safe eval: only math operations
+                          const safe=calcExpr.replace(/[^0-9+\-*/().% ]/g,"");
+                          const res=Function('"use strict";return ('+safe+')')();
+                          const entry=calcExpr+" = "+res;
+                          setCalcResult(res);
+                          setCalcHistory(h=>[entry,...h.slice(0,4)]);
+                          setCalcExpr("");
+                        }catch(e){setCalcResult("Error");}
+                      }
+                    }}
+                    placeholder="e.g. 0.02/(1-0.15-0.80)"
+                    style={{flex:1,fontFamily:"Courier New,monospace",fontSize:9,
+                      padding:"5px 8px",border:"1px solid #B8CCE0",borderRadius:3,
+                      background:"#FFFFFF",color:"#0E1C2A",outline:"none"}}/>
+                  <button onClick={()=>{
+                    try{
+                      const safe=calcExpr.replace(/[^0-9+\-*/().% ]/g,"");
+                      const res=Function('"use strict";return ('+safe+')')();
+                      const entry=calcExpr+" = "+res;
+                      setCalcResult(res);
+                      setCalcHistory(h=>[entry,...h.slice(0,4)]);
+                      setCalcExpr("");
+                    }catch(e){setCalcResult("Error");}
+                  }} style={{padding:"5px 10px",fontFamily:"Courier New,monospace",fontSize:8,
+                    background:"#0A7878",color:"#FFFFFF",border:"none",borderRadius:3,
+                    cursor:"pointer",fontWeight:"bold"}}>
+                    =
+                  </button>
+                </div>
+                {calcResult!==null&&(
+                  <div style={{fontFamily:"Courier New,monospace",fontSize:11,color:"#0A7878",
+                    fontWeight:"bold",marginBottom:4}}>= {typeof calcResult==="number"?calcResult.toFixed(6):calcResult}</div>
+                )}
+                {calcHistory.length>0&&(
+                  <div style={{borderTop:"1px solid #D0DCE8",paddingTop:4,marginTop:4}}>
+                    {calcHistory.map((h,i)=>(
+                      <div key={i} style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#4A6A8A",lineHeight:1.8}}>{h}</div>
+                    ))}
+                  </div>
+                )}
+                <div style={{marginTop:6,fontFamily:"Courier New,monospace",fontSize:7,color:"#7A9AB0",lineHeight:1.6}}>
+                  {"Quick formulas: GARCH SS = ω/(1-α-β) | λ = 1/(1+κ) | damping = 1/(1+0.444)"}
+                </div>
+              </div>
+
+              {/* Parameter sliders */}
+              <div style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#1E3C5C",letterSpacing:1,marginBottom:6}}>PARAMETER PREVIEW</div>
               {[
                 ["Variance (σ²)",calcVar,setCalcVar,0,0.5,0.01],
                 ["κ (damping)",calcKappa,setCalcKappa,0,2,0.001],
@@ -5791,29 +5876,32 @@ export default function HudsonPerryDriftV1() {
                 ["GARCH β",calcGarchB,setCalcGarchB,0,1,0.01],
               ].map(([label,val,setter,min,max,step])=>(
                 <div key={label} style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
-                  <span style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#4A6A8A",width:90,flexShrink:0}}>{label}</span>
+                  <span style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#3A5A70",width:80,flexShrink:0}}>{label}</span>
                   <input type="range" min={min} max={max} step={step} value={val}
                     onChange={e=>setter(parseFloat(e.target.value))}
                     style={{flex:1,accentColor:"#0A7878"}}/>
-                  <span style={{fontFamily:"Courier New,monospace",fontSize:8,color:"#0A7878",width:46,textAlign:"right"}}>{val.toFixed(3)}</span>
+                  <input type="number" min={min} max={max} step={step} value={val}
+                    onChange={e=>{const v=parseFloat(e.target.value);if(!isNaN(v))setter(Math.min(Math.max(v,min),max));}}
+                    style={{width:56,fontFamily:"Courier New,monospace",fontSize:8,color:"#0A7878",
+                      background:"#F4F8FC",border:"1px solid #B8CCE0",borderRadius:3,
+                      padding:"2px 4px",textAlign:"right"}}/>
                 </div>
               ))}
-              <div style={{marginTop:8,padding:"6px 8px",background:"#0A1422",borderRadius:3,border:"1px solid #0A787830"}}>
-                <div style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#C8D8E8",lineHeight:1.8}}>
+              <div style={{marginTop:8,padding:"8px 10px",background:"#EEF8F4",borderRadius:4,border:"1px solid #0A787840"}}>
+                <div style={{fontFamily:"Courier New,monospace",fontSize:8,color:"#0E1C2A",lineHeight:2.0}}>
                   {(()=>{
                     const lam=1/(1+calcKappa);
                     const state=calcVar>0.200?"DECOHERENCE":calcVar>0.120?"CAUTION":calcVar<0.080?"CALM":"NOMINAL";
                     const col=calcVar>0.200?"#C81030":calcVar>0.120?"#C87000":calcVar<0.080?"#178040":"#0A7878";
                     const persist=calcGarchB>=0.9?"VERY HIGH":calcGarchB>=0.8?"HIGH":calcGarchB>=0.6?"MODERATE":"LOW";
                     const garchSS=calcGarchO/(1-calcGarchA-calcGarchB);
-                    const dampedKalman=lam.toFixed(4);
                     return (
                       <span>
-                        {"λ (damping) = "}<strong style={{color:"#0A7878"}}>{dampedKalman}</strong>
+                        {"λ = "}<strong style={{color:"#0A7878"}}>{lam.toFixed(4)}</strong>
                         {"  |  State: "}<strong style={{color:col}}>{state}</strong>
-                        <br/>{"GARCH steady-state σ² = "}<strong style={{color:"#8040C0"}}>{isFinite(garchSS)&&garchSS>0?garchSS.toFixed(5):"N/A (unstable)"}</strong>
-                        <br/>{"Variance persistence: "}<strong>{persist}</strong>
-                        {calcGarchA+calcGarchB>=1&&<span style={{color:"#C81030"}}>{" ⚠ GARCH unstable (α+β≥1)"}</span>}
+                        <br/>{"GARCH SS σ² = "}<strong style={{color:"#8040C0"}}>{isFinite(garchSS)&&garchSS>0?garchSS.toFixed(5):"UNSTABLE"}</strong>
+                        {"  |  Persistence: "}<strong>{persist}</strong>
+                        {calcGarchA+calcGarchB>=1&&<span style={{color:"#C81030"}}>{" ⚠ α+β≥1"}</span>}
                       </span>
                     );
                   })()}
@@ -5824,9 +5912,9 @@ export default function HudsonPerryDriftV1() {
 
           {/* VERIFY TAB — live eval checklist */}
           {toolsTab==="verify"&&(
-            <div style={{padding:"8px 10px",maxHeight:280,overflowY:"auto"}}>
-              <div style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#2E5070",letterSpacing:1,marginBottom:8}}>
-                LIVE SESSION EVAL CHECKLIST
+            <div style={{padding:"10px 12px",maxHeight:300,overflowY:"auto"}}>
+              <div style={{fontFamily:"Courier New,monospace",fontSize:8,color:"#1E3C5C",letterSpacing:2,marginBottom:10,fontWeight:"bold"}}>
+                LIVE SESSION CHECKS
               </div>
               {(()=>{
                 const evals=[
@@ -5861,8 +5949,8 @@ export default function HudsonPerryDriftV1() {
 
           {/* EXPORT TAB — download session data */}
           {toolsTab==="export"&&(
-            <div style={{padding:"8px 10px"}}>
-              <div style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#2E5070",letterSpacing:1,marginBottom:8}}>
+            <div style={{padding:"10px 12px"}}>
+              <div style={{fontFamily:"Courier New,monospace",fontSize:8,color:"#1E3C5C",letterSpacing:2,marginBottom:10,fontWeight:"bold"}}>
                 SESSION EXPORT
               </div>
               {[
@@ -5913,10 +6001,13 @@ export default function HudsonPerryDriftV1() {
                 },
               ].map(({label,desc,onClick})=>(
                 <button key={label} onClick={onClick}
-                  style={{width:"100%",marginBottom:6,padding:"6px 8px",cursor:"pointer",
-                    background:"#0A1422",border:"1px solid #0A787830",borderRadius:3,textAlign:"left"}}>
-                  <div style={{fontFamily:"Courier New,monospace",fontSize:8,color:"#0A7878",marginBottom:2}}>{label}</div>
-                  <div style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#2E5070"}}>{desc}</div>
+                  style={{width:"100%",marginBottom:8,padding:"10px 12px",cursor:"pointer",
+                    background:"#F4F8FC",border:"1px solid #B8CCE0",borderRadius:4,textAlign:"left",
+                    transition:"background .15s"}}
+                onMouseEnter={e=>e.currentTarget.style.background="#E8F0F8"}
+                onMouseLeave={e=>e.currentTarget.style.background="#F4F8FC"}>
+                  <div style={{fontFamily:"Courier New,monospace",fontSize:9,color:"#0A5878",marginBottom:3,fontWeight:"bold"}}>{label}</div>
+                  <div style={{fontFamily:"Courier New,monospace",fontSize:8,color:"#3A5A70"}}>{desc}</div>
                 </button>
               ))}
             </div>
