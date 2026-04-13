@@ -594,6 +594,55 @@ function buildDriftGateInjection(smoothedVar,cfg) {
 }
 
 
+// ===================================================================
+//  META PANEL KNOWLEDGE SEED - V2.2
+//  Compressed ARCHITECT architecture reference for self-analysis AI.
+// ===================================================================
+const META_ARCHITECT_KNOWLEDGE = [
+  "ARCHITECT V2.2 Architecture Reference | Hudson & Perry Research",
+  "",
+  "CORE MATH",
+  "SDE: dε(t)=a(t)ε(t)dt+b·dW_t | a(t)=(α+β_p·sin(ωt))/(1+κ) | b=σ/(1+κ)",
+  "κ=0.444 FIXED | α=-0.25 | β_p=0.18 | ω=2π/12 | σ=0.10 | DAMPING=0.6925",
+  "GARCH(1,1): σ²_t=ω_g+α_g·ε²_{t-1}+β_g·σ²_{t-1} | defaults ω=0.02 α=0.15 β=0.80",
+  "Kalman: x̂=x_p+K×(obs-x_p) | P=(1-K)×P_p | KALMAN_R=0.015 SIGMA_P=0.06 λ=1/(1+κ)",
+  "",
+  "COHERENCE SCORE",
+  "C=0.25×TF-IDF+0.25×(1-JSD)+0.25×lenScore+0.15×struct+0.10×persist×repPenalty",
+  "Floor=0.30 Ceiling=0.99 | VAR_DECOHERENCE=0.200 VAR_CAUTION=0.120 VAR_CALM=0.080",
+  "TF-IDF measures vocabulary SHIFT (shared terms get IDF=0; unique terms IDF=log2≈0.693)",
+  "JSD measures semantic divergence bounded [0,1]",
+  "",
+  "PIPE INJECTION (u_drift)",
+  "Format: [A|t{n}|v={var}|st={state}|kx={x}|kp={P}|cl={calm}|dr={drift}|md={mode}]->{directive}[/A]",
+  "States: NOM=nominal CAU=caution DEC=decoherence CLM=calm",
+  "Directives: DEC=REALIGN.1-sent | CAU=CONSOLIDATE | CLM=STABLE | NOM=DIRECT",
+  "Harness modes: AUD=audit MOD=moderate DPC=deep_clean XTR=extreme",
+  "",
+  "SIGNAL DETECTION",
+  "H-SIG: (1)2+confidence markers+σ²>VAR_CAUTION (2)TF-IDF<8% vs attached (3)self-contradiction+entropy",
+  "B-SIG: roleplay_drift | sycophancy(2+) | hype_inflation(2+) | question_flooding(4+Qs)",
+  "       topic_hijack(TF-IDF<5% vs user) | unsolicited_elaboration | phrase_repetition | low_entropy",
+  "",
+  "PRESETS (dec/cau/calm/GARCH-β/SDE-α)",
+  "DEFAULT: 0.200/0.120/0.080/0.80/-0.25 | TECHNICAL: 0.180/0.100/0.060/0.83/-0.30",
+  "CREATIVE: 0.280/0.160/0.100/0.75/-0.18 | RESEARCH: 0.220/0.130/0.085/0.82/-0.22",
+  "MEDICAL: 0.150/0.090/0.055/0.87/-0.35 | CIRCUIT: 0.140/0.080/0.050/0.88/-0.38 (tightest)",
+  "",
+  "SYSTEM PROMPT ORDER",
+  "BASE_SYSTEM + pinnedDocs + sessionMemory + HARNESS[mode] + RAG + pipe + gate + mute + rails + anchor",
+  "",
+  "V2.2 INTELLIGENCE",
+  "AutoTune: code(T=0.15) creative(T=1.15) analytical(T=0.40) conversational(T=0.75) chaotic(T=1.70)",
+  "Feedback: EMA alpha=0.3, activates at 3 samples, max 50% influence at 20 samples",
+  "Session Memory: auto-compress at turns 10/20/30 into protected system prompt slot",
+  "Pinned Docs: 3 slots 40KB max each, re-injected every turn before harness",
+  "",
+  "YOUR ROLE",
+  "You are the ARCHITECT self-analysis AI. Answer questions about this specific session using exact values from the live data provided. Cite actual turn numbers, thresholds, parameter values. Diagnose using the math above. Give specific actionable recommendations, not generic advice.",
+].join("\n");
+
+
 // ═══════════════════════════════════════════════════════════════
 //  V2.2 ENGINE MODULES
 // ═══════════════════════════════════════════════════════════════
@@ -644,8 +693,28 @@ function processFeedback(state,contextType,rating,params){
   prof.adjustments=adj;
   return{...state,learnedProfiles:{...state.learnedProfiles,[contextType]:prof}};
 }
-function saveFeedbackState(s){try{localStorage.setItem("arch_fb",JSON.stringify(s));}catch(e){}}
-function loadFeedbackState(){try{const s=localStorage.getItem("arch_fb");return s?JSON.parse(s):createFeedbackState();}catch(e){return createFeedbackState();}}
+// ── Unified storage adapter (V2.2) ────────────────────────────
+// localStorage → window.storage fallback → in-memory fallback
+// Safe in private mode, artifact sandbox, and standard browser.
+const _memStore={};
+function _storageSet(key,val){
+  try{localStorage.setItem(key,val);return;}catch(e){}
+  try{if(typeof window!=="undefined"&&window.storage&&window.storage.set){window.storage.set(key,val);return;}}catch(e){}
+  _memStore[key]=val;
+}
+function _storageGet(key){
+  try{const v=localStorage.getItem(key);if(v!==null)return v;}catch(e){}
+  try{if(typeof window!=="undefined"&&window.storage&&window.storage.get){const r=window.storage.get(key);if(r&&r.value)return r.value;}}catch(e){}
+  return _memStore[key]??null;
+}
+function _storageDel(key){
+  try{localStorage.removeItem(key);}catch(e){}
+  try{if(typeof window!=="undefined"&&window.storage&&window.storage.delete)window.storage.delete(key);}catch(e){}
+  delete _memStore[key];
+}
+
+function saveFeedbackState(s){try{_storageSet("arch_fb",JSON.stringify(s));}catch(e){}}
+function loadFeedbackState(){try{const s=_storageGet("arch_fb");return s?JSON.parse(s):createFeedbackState();}catch(e){return createFeedbackState();}}
 function buildReflexivePrompt(coherenceData,activePreset){
   const avg=coherenceData.length?coherenceData.reduce((s,d)=>s+d.raw,0)/coherenceData.length:0;
   const scores=coherenceData.map(d=>d.raw.toFixed(3)).join(", ");
@@ -672,8 +741,8 @@ const THEMES={
   light:{bg:"#F4F6F8",surface:"#FFFFFF",border:"#D0D8E0",text:"#1A2A3A",accent:"#0A6070",label:"Light"},
   contrast:{bg:"#000000",surface:"#111111",border:"#FFFF00",text:"#FFFFFF",accent:"#00FF88",label:"High Contrast"},
 };
-function loadDisplayPrefs(){try{const s=localStorage.getItem("arch_dp");return s?JSON.parse(s):{theme:"navy",fontSize:13,compactMode:false};}catch(e){return{theme:"navy",fontSize:13,compactMode:false};}}
-function saveDisplayPrefs(p){try{localStorage.setItem("arch_dp",JSON.stringify(p));}catch(e){}}
+function loadDisplayPrefs(){try{const s=_storageGet("arch_dp");return s?JSON.parse(s):{theme:"navy",fontSize:13,compactMode:false};}catch(e){return{theme:"navy",fontSize:13,compactMode:false};}}
+function saveDisplayPrefs(p){try{_storageSet("arch_dp",JSON.stringify(p));}catch(e){}}
 
 
 // ===================================================================
@@ -685,11 +754,11 @@ const MAX_PINNED_SLOTS = 3;
 const MAX_PINNED_CHARS = 40000;
 
 function loadPinnedDocs(){
-  try{const s=localStorage.getItem("arch_pinned");return s?JSON.parse(s):[];}
+  try{const s=_storageGet("arch_pinned");return s?JSON.parse(s):[];}
   catch(e){return[];}
 }
 function savePinnedDocs(docs){
-  try{localStorage.setItem("arch_pinned",JSON.stringify(docs));}catch(e){}
+  try{_storageSet("arch_pinned",JSON.stringify(docs));}catch(e){}
 }
 function buildPinnedDocsInjection(docs){
   if(!docs||!docs.length)return"";
@@ -719,6 +788,44 @@ async function readFileForPin(file){
     reader.onerror=()=>resolve(null);
     reader.readAsText(file);
   });
+}
+
+
+// ===================================================================
+//  STRATEGIC SESSION MEMORY - V2.2
+//  Compresses session history at turns 10/20/30 into a protected
+//  RAG slot. Survives pruning. Solves long-session forgetfulness.
+//  Inspired by ECC strategic-compact skill.
+// ===================================================================
+const MEMORY_TRIGGERS = [10, 20, 30]; // turns at which compression fires
+const MEMORY_MAX_CHARS = 2000;        // max chars for memory summary
+
+function loadSessionMemory(){
+  try{const s=_storageGet("arch_mem");return s?JSON.parse(s):null;}
+  catch(e){return null;}
+}
+function saveSessionMemory(m){
+  if(m===null){_storageDel("arch_mem");return;}
+  try{_storageSet("arch_mem",JSON.stringify(m));}catch(e){}
+}
+function buildMemoryInjection(memory){
+  if(!memory||!memory.summary)return"";
+  return"\n\n[SESSION MEMORY - Compressed context from turns 1-"+memory.throughTurn+". Treat as established context.]\n"+memory.summary+"\n[/SESSION MEMORY]";
+}
+function buildMemoryPrompt(messages,coherenceData,activePreset,throughTurn){
+  const turns=messages.slice(0,throughTurn*2).filter(m=>m.role==="user"||m.role==="assistant");
+  const avgScore=coherenceData.length?coherenceData.reduce((s,d)=>s+d.raw,0)/coherenceData.length:0;
+  const drifts=coherenceData.filter(d=>d.harnessActive).length;
+  const pairs=[];
+  for(let i=0;i<turns.length-1;i+=2){
+    const u=turns[i],a=turns[i+1];
+    if(u&&a){
+      const ut=(typeof u.content==="string"?u.content:u.content.map(c=>c.text||"").join("")).slice(0,200);
+      const at=(typeof a.content==="string"?a.content:a.content.map(c=>c.text||"").join("")).slice(0,300);
+      pairs.push("U: "+ut+(ut.length>=200?"...":"")+"; A: "+at+(at.length>=300?"...":""));
+    }
+  }
+  return "Compress this AI session history into a structured memory summary under 400 words. Preserve: domain established, key decisions made, important facts stated, user goals, terminology preferences. Discard: pleasantries, repeated context, scaffolding.\n\nSESSION (turns 1-"+throughTurn+", preset: "+activePreset+", avg coherence: "+avgScore.toFixed(3)+", drift events: "+drifts+"):\n\n"+pairs.join("\n\n")+"\n\nReturn ONLY the memory summary. No preamble, no labels, no JSON.";
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4095,6 +4202,19 @@ export default function HudsonPerryDriftV1() {
   const [reflexiveResult,setReflexiveResult]= useState(null);
   const [reflexiveLoading,setReflexiveLoading]=useState(false);
   const [domainAnchor,   setDomainAnchor]   = useState("none");
+  const [sessionMemory,  setSessionMemory]  = useState(()=>loadSessionMemory());
+  const [showMeta,       setShowMeta]       = useState(false);
+  const [showTools,      setShowTools]      = useState(false);
+  const [toolsTab,       setToolsTab]       = useState("calc");
+  const [calcVar,        setCalcVar]        = useState(0.15);
+  const [calcKappa,      setCalcKappa]      = useState(0.444);
+  const [calcGarchO,     setCalcGarchO]     = useState(0.02);
+  const [calcGarchA,     setCalcGarchA]     = useState(0.15);
+  const [calcGarchB,     setCalcGarchB]     = useState(0.80);
+  const [metaMessages,   setMetaMessages]   = useState([]);
+  const [metaInput,      setMetaInput]      = useState("");
+  const [metaLoading,    setMetaLoading]    = useState(false);
+  const [memoryLoading,  setMemoryLoading]  = useState(false);
   const [pinnedDocs,     setPinnedDocs]     = useState(()=>loadPinnedDocs());
   const [keySaved,       setKeySaved]       = useState(false);   // true when saved to localStorage
   const [embedderStatus, setEmbedderStatus] = useState("init");  // "init"|"loading"|"ready"|"error"
@@ -4105,8 +4225,8 @@ export default function HudsonPerryDriftV1() {
   // ── V2.2: Load saved key + provider from localStorage on mount ──
   useEffect(()=>{
     try {
-      const savedKey      = localStorage.getItem("architect_api_key");
-      const savedProvider = localStorage.getItem("architect_provider");
+      const savedKey      = _storageGet("architect_api_key");
+      const savedProvider = _storageGet("architect_provider");
       if (savedKey)      { setApiKey(savedKey);       setKeySaved(true); }
       if (savedProvider) { setProvider(savedProvider); }
     } catch(e) {}
@@ -4544,7 +4664,8 @@ export default function HudsonPerryDriftV1() {
         :"";
       const anchorInj=buildAnchorInjection(domainAnchor);
       const pinnedInj=buildPinnedDocsInjection(pinnedDocs);
-      const systemPrompt=BASE_SYSTEM+pinnedInj+HARNESS_INJECTIONS[harnessMode]+ragInj+pipeInj+gateInj+muteInj+railsInj+anchorInj;
+      const memoryInj=buildMemoryInjection(sessionMemory);
+      const systemPrompt=BASE_SYSTEM+pinnedInj+memoryInj+HARNESS_INJECTIONS[harnessMode]+ragInj+pipeInj+gateInj+muteInj+railsInj+anchorInj;
       const needsHardTrim=["deep","extreme"].includes(harnessMode)&&pruned.length>6;
       const trimmed=needsHardTrim?[...pruned.slice(0,4),...pruned.slice(-6)]:pruned;
       // Guard: Anthropic API requires the last message to be role:"user".
@@ -4635,6 +4756,28 @@ export default function HudsonPerryDriftV1() {
       }
 
       const finalMessages=[...newMessages,{role:"assistant",content:content_raw}];
+      const assistantTurnCount=finalMessages.filter(m=>m.role==="assistant").length;
+      if(MEMORY_TRIGGERS.includes(assistantTurnCount)&&!memoryLoading&&apiKey.trim()){
+        setMemoryLoading(true);
+        (async()=>{
+          try{
+            const memPrompt=buildMemoryPrompt(finalMessages,coherenceData,activePreset,assistantTurnCount);
+            const mres=await fetch(API_ENDPOINT,{method:"POST",
+              headers:{"Content-Type":"application/json","anthropic-version":"2023-06-01",
+                "x-architect-provider":provider,"x-api-key":apiKey.trim()},
+              body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:500,
+                system:"You are a session memory compressor. Return only the compressed summary.",
+                messages:[{role:"user",content:memPrompt}]})});
+            const mdata=await mres.json();
+            const summary=((mdata.content||[]).map(c=>c.text||"").join("")).slice(0,MEMORY_MAX_CHARS);
+            if(summary.length>50){
+              const mem={summary,throughTurn:assistantTurnCount,createdAt:Date.now(),preset:activePreset};
+              setSessionMemory(mem);saveSessionMemory(mem);
+            }
+          }catch(e){}
+          finally{setMemoryLoading(false);}
+        })();
+      }
       setMessages(finalMessages);
 
       // ── Stage: signal_detection ───────────────────────────────
@@ -5039,6 +5182,8 @@ export default function HudsonPerryDriftV1() {
     setTokenEstimate(0);
     // presets and feature toggles persist across resets by design
     try { window.storage.delete("hpdl_config"); window.storage.delete("hpdl_data"); } catch(e) {}
+    setSessionMemory(null);saveSessionMemory(null);
+    setMsgRatings({});
   };
 
   const deleteTurn=useCallback((assistantMsgIndex)=>{
@@ -5444,6 +5589,14 @@ export default function HudsonPerryDriftV1() {
           onClick={()=>setShowNotes(p=>!p)}>
           {showNotes?"HIDE NOTES":"NOTES"}
         </button>
+        <button style={{...S.logBtn,borderColor:"#8040C044",color:showMeta?"#8040C0":"#4A3A70"}}
+          onClick={()=>setShowMeta(p=>!p)}>
+          {showMeta?"HIDE META":"META"}
+        </button>
+        <button style={{...S.logBtn,borderColor:"#0A787844",color:showTools?"#0A7878":"#1A4A4A"}}
+          onClick={()=>setShowTools(p=>!p)}>
+          {showTools?"HIDE TOOLS":"TOOLS"}
+        </button>
         <button style={S.resetBtn} onClick={resetSession}>RESET</button>
         </div>
       </div>
@@ -5496,6 +5649,281 @@ export default function HudsonPerryDriftV1() {
           }
         </div>
       )}
+      {/* V2.2: Session Memory Status */}
+      {(sessionMemory||memoryLoading)&&(
+        <div style={{margin:"4px 20px 0",padding:"5px 10px",background:"#0A1422",
+          borderRadius:4,border:"1px solid #8040C030",
+          display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontFamily:"Courier New,monospace",fontSize:7,
+            color:memoryLoading?"#C87000":"#8040C0",letterSpacing:1}}>
+            {memoryLoading?"COMPRESSING...":"MEM"}
+          </span>
+          {sessionMemory&&!memoryLoading&&(
+            <span style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#4A6A8A",flex:1,
+              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+              {"T1-"+sessionMemory.throughTurn+" "+sessionMemory.preset}
+            </span>
+          )}
+          {sessionMemory&&!memoryLoading&&(
+            <button onClick={()=>{setSessionMemory(null);saveSessionMemory(null);}}
+              style={{background:"none",border:"none",color:"#2E5070",cursor:"pointer",
+                fontFamily:"Courier New,monospace",fontSize:7,padding:0,flexShrink:0}}>
+              CLEAR
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* V2.2: META Panel */}
+      {showMeta&&(
+        <div style={{margin:"6px 20px 0",border:"1px solid #8040C044",borderRadius:5,
+          background:"#06090F",display:"flex",flexDirection:"column",maxHeight:380}}>
+          <div style={{padding:"6px 10px",borderBottom:"1px solid #8040C030",
+            display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+            <div style={{fontFamily:"Courier New,monospace",fontSize:8,color:"#8040C0",letterSpacing:2}}>
+              META — ARCHITECT SELF-ANALYSIS
+            </div>
+            {metaMessages.length>0&&(
+              <button onClick={()=>setMetaMessages([])}
+                style={{background:"none",border:"none",color:"#2E5070",cursor:"pointer",
+                  fontFamily:"Courier New,monospace",fontSize:7,padding:0}}>CLEAR</button>
+            )}
+          </div>
+          <div style={{flex:1,overflowY:"auto",padding:"8px 10px",display:"flex",
+            flexDirection:"column",gap:6,minHeight:80}}>
+            {metaMessages.length===0&&(
+              <div style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#2E5070",
+                lineHeight:1.6,padding:"4px 0"}}>
+                {"Ask anything about this session. Examples:\n\u2022 Why did coherence drop at turn 7?\n\u2022 What preset would work better here?\n\u2022 Explain what the GARCH variance means right now.\n\u2022 What should I change to reduce drift?"}
+              </div>
+            )}
+            {metaMessages.map((m,i)=>(
+              <div key={i} style={{
+                padding:"5px 8px",borderRadius:4,
+                background:m.role==="user"?"#0A1422":"#0E0A1A",
+                border:"1px solid "+(m.role==="user"?"#1A3050":"#8040C030"),
+                alignSelf:m.role==="user"?"flex-end":"flex-start",
+                maxWidth:"90%",
+              }}>
+                <div style={{fontFamily:"Courier New,monospace",fontSize:7,
+                  color:m.role==="user"?"#C8D8E8":"#C0A8E8",lineHeight:1.5,
+                  whiteSpace:"pre-wrap"}}>{m.content}</div>
+              </div>
+            ))}
+            {metaLoading&&(
+              <div style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#8040C0",
+                padding:"4px 0",letterSpacing:1}}>ANALYZING...</div>
+            )}
+          </div>
+          <div style={{padding:"6px 8px",borderTop:"1px solid #8040C020",
+            display:"flex",gap:6,flexShrink:0}}>
+            <textarea
+              value={metaInput}
+              onChange={e=>setMetaInput(e.target.value)}
+              onKeyDown={e=>{
+                if(e.key==="Enter"&&!e.shiftKey){
+                  e.preventDefault();
+                  if(!metaInput.trim()||metaLoading||!apiKey.trim())return;
+                  const userMsg=metaInput.trim();
+                  setMetaInput("");
+                  const newMetaMsgs=[...metaMessages,{role:"user",content:userMsg}];
+                  setMetaMessages(newMetaMsgs);
+                  setMetaLoading(true);
+                  // Build META context from live session data
+                  const avgScore=coherenceData.length?coherenceData.reduce((s,d)=>s+d.raw,0)/coherenceData.length:0;
+                  const driftEvts=coherenceData.filter(d=>d.harnessActive).length;
+                  const hSigs=coherenceData.filter(d=>(d.hCount||0)>0).length;
+                  const bSigs=coherenceData.filter(d=>(d.bCount||0)>0).length;
+                  const liveCtx="LIVE SESSION DATA:\nPreset: "+activePreset+"\nTurns: "+coherenceData.length+"\nAvg coherence: "+avgScore.toFixed(3)+"\nDrift events: "+driftEvts+"\nH-signal turns: "+hSigs+" B-signal turns: "+bSigs+(lastAutoTune?"\nLast AutoTune: "+lastAutoTune.type+" T="+lastAutoTune.params.temperature.toFixed(2):"")+(sessionMemory?"\nSession memory active: turns 1-"+sessionMemory.throughTurn:"")+"\nRecent scores: ["+coherenceData.slice(-6).map(d=>d.raw.toFixed(3)).join(", ")+"]";
+                  const metaSysPrompt=META_ARCHITECT_KNOWLEDGE+"\n\n"+liveCtx;
+                  const metaHistory=newMetaMsgs.map(m=>({role:m.role,content:m.content}));
+                  fetch(API_ENDPOINT,{method:"POST",
+                    headers:{"Content-Type":"application/json","anthropic-version":"2023-06-01",
+                      "x-architect-provider":provider,"x-api-key":apiKey.trim()},
+                    body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:600,
+                      system:metaSysPrompt,messages:metaHistory})})
+                  .then(r=>r.json())
+                  .then(data=>{
+                    const reply=((data.content||[]).map(c=>c.text||"").join("")).trim();
+                    if(reply)setMetaMessages(prev=>[...prev,{role:"assistant",content:reply}]);
+                  })
+                  .catch(()=>setMetaMessages(prev=>[...prev,{role:"assistant",content:"Error — check API key and connection."}]))
+                  .finally(()=>setMetaLoading(false));
+                }
+              }}
+              placeholder="Ask about this session... (Enter to send)"
+              rows={2}
+              style={{flex:1,fontFamily:"Courier New,monospace",fontSize:8,
+                background:"#0A1422",color:"#C8D8E8",border:"1px solid #1A3050",
+                borderRadius:3,padding:"4px 7px",resize:"none",
+                outline:"none"}}/>
+          </div>
+        </div>
+      )}
+
+      {/* V2.2: Quick Tools Drawer */}
+      {showTools&&(
+        <div style={{margin:"6px 20px 0",border:"1px solid #0A787844",borderRadius:5,background:"#06090F"}}>
+          {/* Tab bar */}
+          <div style={{display:"flex",borderBottom:"1px solid #0A787830"}}>
+            {[["calc","CALC"],["verify","VERIFY"],["export","EXPORT"]].map(([tab,label])=>(
+              <button key={tab} onClick={()=>setToolsTab(tab)}
+                style={{flex:1,padding:"5px 4px",background:"none",border:"none",cursor:"pointer",
+                  fontFamily:"Courier New,monospace",fontSize:7,letterSpacing:1,
+                  color:toolsTab===tab?"#0A7878":"#2E5070",
+                  borderBottom:toolsTab===tab?"2px solid #0A7878":"2px solid transparent"}}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* CALC TAB — SDE/GARCH parameter preview */}
+          {toolsTab==="calc"&&(
+            <div style={{padding:"8px 10px"}}>
+              <div style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#2E5070",letterSpacing:1,marginBottom:8}}>
+                SDE / GARCH PARAMETER CALCULATOR
+              </div>
+              {[
+                ["Variance (σ²)",calcVar,setCalcVar,0,0.5,0.01],
+                ["κ (damping)",calcKappa,setCalcKappa,0,2,0.001],
+                ["GARCH ω",calcGarchO,setCalcGarchO,0.001,0.1,0.001],
+                ["GARCH α",calcGarchA,setCalcGarchA,0,0.5,0.01],
+                ["GARCH β",calcGarchB,setCalcGarchB,0,1,0.01],
+              ].map(([label,val,setter,min,max,step])=>(
+                <div key={label} style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
+                  <span style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#4A6A8A",width:90,flexShrink:0}}>{label}</span>
+                  <input type="range" min={min} max={max} step={step} value={val}
+                    onChange={e=>setter(parseFloat(e.target.value))}
+                    style={{flex:1,accentColor:"#0A7878"}}/>
+                  <span style={{fontFamily:"Courier New,monospace",fontSize:8,color:"#0A7878",width:46,textAlign:"right"}}>{val.toFixed(3)}</span>
+                </div>
+              ))}
+              <div style={{marginTop:8,padding:"6px 8px",background:"#0A1422",borderRadius:3,border:"1px solid #0A787830"}}>
+                <div style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#C8D8E8",lineHeight:1.8}}>
+                  {(()=>{
+                    const lam=1/(1+calcKappa);
+                    const state=calcVar>0.200?"DECOHERENCE":calcVar>0.120?"CAUTION":calcVar<0.080?"CALM":"NOMINAL";
+                    const col=calcVar>0.200?"#C81030":calcVar>0.120?"#C87000":calcVar<0.080?"#178040":"#0A7878";
+                    const persist=calcGarchB>=0.9?"VERY HIGH":calcGarchB>=0.8?"HIGH":calcGarchB>=0.6?"MODERATE":"LOW";
+                    const garchSS=calcGarchO/(1-calcGarchA-calcGarchB);
+                    const dampedKalman=lam.toFixed(4);
+                    return (
+                      <span>
+                        {"λ (damping) = "}<strong style={{color:"#0A7878"}}>{dampedKalman}</strong>
+                        {"  |  State: "}<strong style={{color:col}}>{state}</strong>
+                        <br/>{"GARCH steady-state σ² = "}<strong style={{color:"#8040C0"}}>{isFinite(garchSS)&&garchSS>0?garchSS.toFixed(5):"N/A (unstable)"}</strong>
+                        <br/>{"Variance persistence: "}<strong>{persist}</strong>
+                        {calcGarchA+calcGarchB>=1&&<span style={{color:"#C81030"}}>{" ⚠ GARCH unstable (α+β≥1)"}</span>}
+                      </span>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* VERIFY TAB — live eval checklist */}
+          {toolsTab==="verify"&&(
+            <div style={{padding:"8px 10px",maxHeight:280,overflowY:"auto"}}>
+              <div style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#2E5070",letterSpacing:1,marginBottom:8}}>
+                LIVE SESSION EVAL CHECKLIST
+              </div>
+              {(()=>{
+                const evals=[
+                  ["E01 Messages present",messages.length>0],
+                  ["E02 Coherence data flowing",coherenceData.length>0],
+                  ["E03 Kalman active",kalmanState&&kalmanState.P<1],
+                  ["E04 GARCH variance computed",smoothedVar!==null&&smoothedVar>0],
+                  ["E05 No runaway variance",smoothedVar===null||smoothedVar<0.5],
+                  ["E06 Preset loaded",!!activePreset],
+                  ["E07 API key set",apiKey.trim().length>0],
+                  ["E08 Provider selected",!!provider],
+                  ["E09 Below prune threshold",messages.filter(m=>m.role==="assistant").length<=PRUNE_THRESHOLD+2],
+                  ["E10 RAG cache healthy",ragCache.length<=20],
+                  ["E11 AutoTune enabled",autoTuneEnabled],
+                  ["E12 Domain anchor set",domainAnchor!=="none"],
+                  ["E13 Pinned docs loaded",pinnedDocs.length>0],
+                  ["E14 Session memory active",!!sessionMemory],
+                  ["E15 No stuck drift",driftCount<10],
+                ];
+                return evals.map(([label,pass])=>(
+                  <div key={label} style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,
+                    padding:"3px 6px",borderRadius:3,
+                    background:pass?"#050F050A":"#1A05050A"}}>
+                    <span style={{color:pass?"#178040":"#C81030",fontFamily:"Courier New,monospace",fontSize:9,flexShrink:0}}>{pass?"✓":"✗"}</span>
+                    <span style={{fontFamily:"Courier New,monospace",fontSize:7,
+                      color:pass?"#4A8A6A":"#8A4A4A"}}>{label}</span>
+                  </div>
+                ));
+              })()}
+            </div>
+          )}
+
+          {/* EXPORT TAB — download session data */}
+          {toolsTab==="export"&&(
+            <div style={{padding:"8px 10px"}}>
+              <div style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#2E5070",letterSpacing:1,marginBottom:8}}>
+                SESSION EXPORT
+              </div>
+              {[
+                {
+                  label:"CSV — Coherence Scores",
+                  desc:"Per-turn scores, variance, Kalman, drift state",
+                  onClick:()=>{
+                    if(!coherenceData.length)return;
+                    const hdr="turn,raw,kalman_x,smoothed_var,harness_active,h_count,b_count";
+                    const rows=coherenceData.map((d,i)=>
+                      [i+1,d.raw.toFixed(4),d.kalmanX.toFixed(4),(d.smoothedVar||0).toFixed(5),
+                       d.harnessActive?1:0,(d.hCount||0),(d.bCount||0)].join(","));
+                    const csv=[hdr,...rows].join("\n");
+                    const a=document.createElement("a");
+                    a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+                    a.download="architect_session_"+Date.now()+".csv";a.click();
+                  },
+                },
+                {
+                  label:"JSONL — Full Event Log",
+                  desc:"All events, signals, harness state per turn",
+                  onClick:()=>{
+                    if(!eventLog.length)return;
+                    const jsonl=eventLog.map(e=>JSON.stringify(e)).join("\n");
+                    const a=document.createElement("a");
+                    a.href=URL.createObjectURL(new Blob([jsonl],{type:"application/jsonl"}));
+                    a.download="architect_events_"+Date.now()+".jsonl";a.click();
+                  },
+                },
+                {
+                  label:"TXT — Chat + Metrics",
+                  desc:"Full conversation with per-turn coherence scores",
+                  onClick:()=>{
+                    if(!messages.length)return;
+                    const lines=["ARCHITECT V2.2 SESSION EXPORT","Preset: "+activePreset,"Date: "+new Date().toISOString(),"","=== CONVERSATION ===",""];
+                    messages.forEach((m,i)=>{
+                      const role=m.role.toUpperCase();
+                      const txt=typeof m.content==="string"?m.content:m.content.map(c=>c.text||"").join("");
+                      const ti=messages.slice(0,i+1).filter(x=>x.role==="assistant").length-1;
+                      const cd=m.role==="assistant"&&ti>=0?coherenceData[ti]:null;
+                      lines.push("["+role+(cd?" | C="+cd.raw.toFixed(3)+" var="+((cd.smoothedVar||0).toFixed(4)):"")+"]");
+                      lines.push(txt);lines.push("");
+                    });
+                    const a=document.createElement("a");
+                    a.href=URL.createObjectURL(new Blob([lines.join("\n")],{type:"text/plain"}));
+                    a.download="architect_chat_"+Date.now()+".txt";a.click();
+                  },
+                },
+              ].map(({label,desc,onClick})=>(
+                <button key={label} onClick={onClick}
+                  style={{width:"100%",marginBottom:6,padding:"6px 8px",cursor:"pointer",
+                    background:"#0A1422",border:"1px solid #0A787830",borderRadius:3,textAlign:"left"}}>
+                  <div style={{fontFamily:"Courier New,monospace",fontSize:8,color:"#0A7878",marginBottom:2}}>{label}</div>
+                  <div style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#2E5070"}}>{desc}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* PROVIDER + API KEY — V2.2 */}
       <div style={{display:"flex",flexDirection:"column",gap:4,padding:"4px 20px"}}>
         {/* Provider selector row */}
@@ -5540,8 +5968,8 @@ export default function HudsonPerryDriftV1() {
           {apiKeyValid&&!keySaved&&(
             <button onClick={()=>{
               try {
-                localStorage.setItem("architect_api_key", apiKey.trim());
-                localStorage.setItem("architect_provider", provider);
+                _storageSet("architect_api_key", apiKey.trim());
+                _storageSet("architect_provider", provider);
                 setKeySaved(true);
               } catch(e) {}
             }} style={{...S.resetBtn,padding:"2px 8px",fontSize:9,
@@ -5556,8 +5984,8 @@ export default function HudsonPerryDriftV1() {
                 color:"#178040",flexShrink:0}}>✓ SAVED</span>
               <button onClick={()=>{
                 try {
-                  localStorage.removeItem("architect_api_key");
-                  localStorage.removeItem("architect_provider");
+                  _storageDel("architect_api_key");
+                  _storageDel("architect_provider");
                 } catch(e) {}
                 setApiKey(""); setKeySaved(false);
               }} style={{...S.resetBtn,padding:"2px 8px",fontSize:9,
