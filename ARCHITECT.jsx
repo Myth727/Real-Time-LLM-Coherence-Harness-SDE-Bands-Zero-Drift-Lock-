@@ -5711,37 +5711,41 @@ export default function HudsonPerryDriftV1() {
 
       {/* V2.2: META Panel */}
       {showMeta&&(
-        <div style={{margin:"6px 20px 0",border:"1px solid #8040C044",borderRadius:5,
-          background:"#06090F",display:"flex",flexDirection:"column",maxHeight:380}}>
-          <div style={{padding:"6px 10px",borderBottom:"1px solid #8040C030",
+        <div style={{margin:"6px 20px 0",border:"1px solid #9060C0",borderRadius:5,
+          background:"#FFFFFF",display:"flex",flexDirection:"column",maxHeight:400,
+          boxShadow:"0 2px 8px rgba(128,64,192,0.12)"}}>
+          <div style={{padding:"7px 10px",borderBottom:"2px solid #D0B8E8",
+            background:"#F4EEFF",borderRadius:"5px 5px 0 0",
             display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-            <div style={{fontFamily:"Courier New,monospace",fontSize:8,color:"#8040C0",letterSpacing:2}}>
+            <div style={{fontFamily:"Courier New,monospace",fontSize:8,color:"#6020A0",
+              letterSpacing:2,fontWeight:"bold"}}>
               META — ARCHITECT SELF-ANALYSIS
             </div>
             {metaMessages.length>0&&(
               <button onClick={()=>setMetaMessages([])}
-                style={{background:"none",border:"none",color:"#2E5070",cursor:"pointer",
+                style={{background:"none",border:"none",color:"#6020A0",cursor:"pointer",
                   fontFamily:"Courier New,monospace",fontSize:7,padding:0}}>CLEAR</button>
             )}
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"8px 10px",display:"flex",
-            flexDirection:"column",gap:6,minHeight:80}}>
+            flexDirection:"column",gap:6,minHeight:80,background:"#FDFBFF"}}>
             {metaMessages.length===0&&(
-              <div style={{fontFamily:"Courier New,monospace",fontSize:7,color:"#2E5070",
-                lineHeight:1.6,padding:"4px 0"}}>
-                {"Ask anything about this session. Examples:\n\u2022 Why did coherence drop at turn 7?\n\u2022 What preset would work better here?\n\u2022 Explain what the GARCH variance means right now.\n\u2022 What should I change to reduce drift?"}
+              <div style={{fontFamily:"Courier New,monospace",fontSize:7.5,color:"#4A3A6A",
+                lineHeight:1.8,padding:"6px 8px",background:"#F0E8FF",borderRadius:4,
+                border:"1px solid #D0B8E8"}}>
+                {"Ask anything about this session:\n\u2022 Why did coherence drop at turn 7?\n\u2022 What preset fits this session better?\n\u2022 What does the variance spike mean right now?\n\u2022 What should I change to reduce drift?"}
               </div>
             )}
             {metaMessages.map((m,i)=>(
               <div key={i} style={{
-                padding:"5px 8px",borderRadius:4,
-                background:m.role==="user"?"#0A1422":"#0E0A1A",
-                border:"1px solid "+(m.role==="user"?"#1A3050":"#8040C030"),
+                padding:"6px 10px",borderRadius:6,
+                background:m.role==="user"?"#EEF0FF":"#F8F4FF",
+                border:"1px solid "+(m.role==="user"?"#B0B8E8":"#D0B8E8"),
                 alignSelf:m.role==="user"?"flex-end":"flex-start",
-                maxWidth:"90%",
+                maxWidth:"92%",
               }}>
-                <div style={{fontFamily:"Courier New,monospace",fontSize:7,
-                  color:m.role==="user"?"#C8D8E8":"#C0A8E8",lineHeight:1.5,
+                <div style={{fontFamily:"Courier New,monospace",fontSize:8,
+                  color:m.role==="user"?"#1E2060":"#3A1060",lineHeight:1.6,
                   whiteSpace:"pre-wrap"}}>{m.content}</div>
               </div>
             ))}
@@ -5750,8 +5754,9 @@ export default function HudsonPerryDriftV1() {
                 padding:"4px 0",letterSpacing:1}}>ANALYZING...</div>
             )}
           </div>
-          <div style={{padding:"6px 8px",borderTop:"1px solid #8040C020",
-            display:"flex",gap:6,flexShrink:0}}>
+          <div style={{padding:"7px 8px",borderTop:"1px solid #D0B8E8",
+            background:"#F4EEFF",display:"flex",gap:6,flexShrink:0,
+            borderRadius:"0 0 5px 5px"}}>
             <textarea
               value={metaInput}
               onChange={e=>setMetaInput(e.target.value)}
@@ -5761,7 +5766,7 @@ export default function HudsonPerryDriftV1() {
               placeholder="Ask about this session..."
               rows={2}
               style={{flex:1,fontFamily:"Courier New,monospace",fontSize:8,
-                background:"#0A1422",color:"#C8D8E8",border:"1px solid #1A3050",
+                background:"#FFFFFF",color:"#1E0840",border:"1px solid #B090D8",
                 borderRadius:3,padding:"4px 7px",resize:"none",outline:"none"}}/>
             <button
               disabled={!metaInput.trim()||metaLoading||!apiKey.trim()}
