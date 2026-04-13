@@ -561,3 +561,656 @@ License: dots.ocr LICENSE AGREEMENT (see repository)
 
 *© 2026 Hudson & Perry Research — This knowledge seed compiled for ARCHITECT integration.*
 *All prompt text © RedNote HiLab. Inference parameters and algorithms derived from open-source code.*
+
+---
+
+## Part 10 — Per-Mode Configuration Maps (Production-Derived)
+
+These three maps are extracted directly from production demo code and encode hard-won
+knowledge about how each mode behaves differently. Any implementation must use them.
+
+### Map 1: Fitz Preprocessing Required Per Mode
+
+```python
+PROMPT_TO_FITZ_PREPROCESS = {
+    "prompt_layout_all_en":  True,   # Document — needs DPI upsampling pipeline
+    "prompt_layout_only_en": True,   # Document detection — needs DPI upsampling
+    "prompt_ocr":            True,   # OCR — needs DPI upsampling
+    "prompt_web_parsing":    False,  # Web screenshots — already screen resolution
+    "prompt_scene_spotting": False,  # Scene photos — fitz degrades natural images
+    "prompt_image_to_svg":   False,  # Charts/graphics — fitz artifacts hurt SVG
+    "prompt_general":        False,  # QA — no preprocessing needed
+}
+```
+
+**What fitz preprocessing does:** Converts image → PDF → re-rasters at 200 DPI.
+Specifically designed for low-DPI scanned documents. Actively harmful for web
+screenshots and scene photos which are already at screen resolution.
+
+**Rule:** Always look up the mode before preprocessing. Never apply fitz universally.
+
+---
+
+### Map 2: Temperature Per Mode
+
+```python
+PROMPT_TO_TEMPERATURE = {
+    "prompt_layout_all_en":  0.1,   # Deterministic — exact JSON required
+    "prompt_layout_only_en": 0.1,   # Deterministic — exact JSON required
+    "prompt_ocr":            0.1,   # Deterministic — exact text required
+    "prompt_web_parsing":    0.1,   # Deterministic — structured output
+    "prompt_scene_spotting": 0.1,   # Deterministic — exact text detection
+    "prompt_image_to_svg":   0.9,   # Creative — SVG generation needs variation
+    "prompt_general":        0.1,   # Default — can be overridden by user
+}
+```
+
+**Critical:** The SVG mode exception is not a typo. SVG generation at temperature=0.1
+produces rigid, repetitive SVG with poor coverage of complex graphical elements.
+At temperature=0.9 the model explores more path options and produces better reconstructions.
+Every other mode benefits from determinism.
+
+**Do not use a single temperature for all modes.**
+
+---
+
+### Map 3: Model Routing Per Mode
+
+```python
+PROMPT_TO_MODEL = {
+    "prompt_image_to_svg": "dots.mocr-svg",  # Specialized SVG model
+    # All other modes → dots.mocr (default)
+}
+```
+
+`dots.mocr-svg` is a specialized fine-tune. Sending SVG tasks to the base `dots.mocr`
+produces significantly lower quality SVG. On the UniSVG benchmark, `dots.mocr-svg`
+scores 0.902 overall vs `dots.mocr` at 0.894 — and on Chartmimic: 0.905 vs 0.772.
+
+**Rule:** Before calling any model, check `PROMPT_TO_MODEL`. If the mode has an entry,
+use that model. Otherwise use `dots.mocr`.
+
+---
+
+### Map 4: Filename-Based Auto-Routing (Smart Mode Selection)
+
+When a filename is available, use keyword matching to auto-select the prompt mode:
+
+```python
+DEMO_CASE_CONFIG = {
+    "doc":      {"prompt_mode": "prompt_layout_all_en"},
+    "formula":  {"prompt_mode": "prompt_layout_all_en"},
+    "table":    {"prompt_mode": "prompt_layout_all_en"},
+    "detect":   {"prompt_mode": "prompt_layout_only_en"},
+    "ocr":      {"prompt_mode": "prompt_ocr"},
+    "webpage":  {"prompt_mode": "prompt_web_parsing"},
+    "scene":    {"prompt_mode": "prompt_scene_spotting"},
+    "svg":      {"prompt_mode": "prompt_image_to_svg"},
+    "general_qa": {
+        "prompt_mode": "prompt_general",
+        "custom_prompt": "your question here"
+    },
+}
+DEFAULT_DEMO_CONFIG = {"prompt_mode": "prompt_layout_all_en"}
+```
+
+**Matching logic:** Check if any keyword appears as a substring of the filename
+(case-insensitive). First match wins. Fall back to `prompt_layout_all_en` if no match.
+
+**For ARCHITECT pinned slots:** When user uploads a file, check the filename for these
+keywords before calling the model. This avoids asking the user to select a mode manually.
+
+---
+
+## Part 11 — Critical Implementation Details
+
+### The `filtered` Flag — Degraded Output Detection
+
+When JSON parsing of the model output fails entirely, the parser falls back to
+cleaned plain text. The result object includes `filtered: True` to signal this.
+
+```python
+result = {
+    "layout_image": ...,
+    "cells_data": None,        # JSON failed — no structured data
+    "md_content": "raw text",  # Plain text fallback
+    "filtered": True,          # SIGNAL: output is degraded
+}
+```
+
+**What to do when `filtered=True`:**
+- The text content may still be usable as plain OCR output
+- Do NOT attempt to parse `md_content` as structured JSON
+- Log or surface the degraded quality to the user
+- For ARCHITECT pinned slots: use the text but prepend a warning comment
+
+**What causes filtering:** Token limit exceeded mid-JSON, corrupted model output,
+or OutputCleaner failing all recovery strategies.
+
+---
+
+### The `_nohf` Variant — Clean Output for Context Injection
+
+The parser generates two markdown files per page:
+
+| File | Contents | Use when |
+|---|---|---|
+| `filename.md` | Full content including Page-header and Page-footer | Human reading |
+| `filename_nohf.md` | Content WITHOUT Page-header and Page-footer | Benchmarks, context injection |
+
+**For ARCHITECT pinned document slots: always use `_nohf` variant.**
+
+Page headers and footers are typically "Chapter 3", "Page 47", "Confidential — Draft",
+"Company Name 2024" — noise that pollutes the context window and confuses coherence
+scoring. Stripping them reduces pinned doc size by 5–15% and improves signal quality.
+
+---
+
+### Grounding OCR Bbox Coordinate Scaling
+
+The `prompt_grounding_ocr` mode requires bbox coordinates — but these must be in the
+**model's resized input space**, not the original image space.
+
+**The scaling pipeline:**
+
+```python
+# 1. Get original image dimensions
+orig_w, orig_h = original_image.size
+
+# 2. Compute resized dimensions (what the model sees)
+input_h, input_w = smart_resize(orig_h, orig_w, factor=28,
+                                 min_pixels=3136, max_pixels=11289600)
+
+# 3. Scale the user's bbox from original to model space
+scale_x = input_w / orig_w
+scale_y = input_h / orig_h
+scaled_bbox = [
+    int(user_bbox[0] * scale_x),
+    int(user_bbox[1] * scale_y),
+    int(user_bbox[2] * scale_x),
+    int(user_bbox[3] * scale_y),
+]
+
+# 4. Pass scaled_bbox in the prompt
+prompt = f"Extract text from the given bounding box: {scaled_bbox}"
+```
+
+**Without this scaling:** The model receives coordinates that don't correspond to
+the actual region in its resized view. Results will be incorrect or empty.
+
+**After getting results:** Scale bbox coordinates back from model space to original:
+```python
+# Inverse scaling to convert model output bboxes to original image space
+orig_bbox = [
+    int(model_bbox[0] / scale_x),
+    int(model_bbox[1] / scale_y),
+    int(model_bbox[2] / scale_x),
+    int(model_bbox[3] / scale_y),
+]
+```
+
+---
+
+### Multi-Page PDF Threading Pattern
+
+```python
+# Correct multi-threaded PDF processing
+tasks = [{"origin_image": img, "page_idx": i, ...}
+         for i, img in enumerate(images)]
+
+with ThreadPool(min(total_pages, 64)) as pool:
+    results = list(pool.imap_unordered(_process_single_page, tasks))
+
+# CRITICAL: imap_unordered returns pages out of order
+results.sort(key=lambda x: x["page_no"])
+
+# Join pages
+combined_md = "\n\n---\n\n".join(
+    r["md_content"] for r in results if r.get("md_content")
+)
+```
+
+**Key points:**
+- `imap_unordered` is faster than `imap` — results come back as pages finish
+- Must sort by `page_no` after collection — never assume order
+- Page separator is `\n\n---\n\n` — the `---` is a markdown horizontal rule marking page boundaries
+- HuggingFace inference mode: force `num_thread=1` (no GPU parallelism)
+- vLLM mode: up to 64 threads, capped at total page count
+
+---
+
+### Parser Instance Caching
+
+Don't recreate parser instances for each request. Cache by model name:
+
+```python
+_parser_cache = {}
+
+def get_parser(model_name, min_pixels=None, max_pixels=None):
+    if model_name in _parser_cache:
+        # Update settings on existing instance
+        parser = _parser_cache[model_name]
+        parser.min_pixels = min_pixels
+        parser.max_pixels = max_pixels
+        return parser
+    # Create new instance
+    parser = DotsOCRParser(model_name=model_name, ...)
+    _parser_cache[model_name] = parser
+    return parser
+```
+
+**Why this matters:** Creating a new parser instance for each request adds overhead.
+For HuggingFace mode, it reloads model weights each time — catastrophic for latency.
+
+---
+
+### Custom Prompt (General QA Mode Only)
+
+`prompt_general` is the only mode that accepts a user-defined prompt. All other
+modes have locked template prompts that must not be overridden.
+
+```python
+# Correct: custom prompt only for prompt_general
+if prompt_mode == "prompt_general":
+    effective_prompt = custom_prompt or ""
+else:
+    effective_prompt = dict_promptmode_to_prompt[prompt_mode]
+    # custom_prompt is IGNORED for all other modes
+```
+
+**Use cases for prompt_general:**
+- "What is the title of this document?"
+- "Describe the chart in panel 3"
+- "What year was this document published?"
+- "Across panels 1-12, which variable is most positively correlated with clean accuracy?"
+
+Treat `prompt_general` as a VLM QA interface. Temperature can be raised (0.3–0.7)
+for more conversational responses.
+
+---
+
+## Part 12 — Elo Evaluation Rubric (Full Scoring System)
+
+Source: `tools/elo_score_prompt.py`. The complete rubric used to compare any two
+OCR model outputs. Reusable for evaluating any document parsing system.
+
+**Evaluation is conducted by a judge LLM** (Gemini Flash in production) comparing
+two model outputs against the original image.
+
+### What TO Score (Content Accuracy Only)
+
+1. **Text accuracy:** Character-level recognition errors, missing words, hallucinated content
+2. **Table accuracy:** Correctness of cell data, completeness, row/column alignment
+3. **Formula accuracy:** Symbol preservation, completeness, semantic equivalence of math
+
+### What to ABSOLUTELY IGNORE
+
+- Markdown formatting differences (`#` vs `##`, `*` vs `-`)
+- Layout, newlines, indentation, paragraph breaks
+- Headers, footers, page numbers
+- Table border styles (`|---|` vs `|:--|`)
+- Equivalent LaTeX representations (`$x^2$` vs `$x \cdot x$`)
+- **Image/figure processing differences (ABSOLUTELY IGNORE):**
+  - Whether model outputs a figure bbox, describes the image, extracts embedded text, or skips it entirely — these are ALL equivalent. Never declare a winner based on image handling.
+
+### Tie Criteria
+
+Declare a **tie** when:
+- Content is identical, format differs
+- Table data identical, syntax differs
+- Formulas are semantically equivalent
+- Both models share the same minor errors
+- Main text accurate but one model caught a footer the other didn't
+
+**Rule: It is better to judge tie than to incorrectly declare a winner based on format.**
+
+### Winner Criteria
+
+Declare a winner ONLY when there is a significant difference in:
+- Typos and character recognition errors
+- Omissions of actual content
+- Hallucinated content not in the original
+- Table data errors
+- Formula semantic errors (wrong mathematical meaning)
+
+### Output Format
+
+```json
+{"winner": "1", "reason": "Model 1 correctly identified the formula as $E=mc^2$ while Model 2 omitted the superscript producing $Emc2$"}
+{"winner": "2", "reason": "Model 2 correctly extracted all 5 table rows; Model 1 missed the last row entirely"}
+{"winner": "tie", "reason": "Both models produced identical text content. Model 1 used HTML table syntax while Model 2 used pipe tables, but data is identical. Image regions ignored per evaluation protocol."}
+```
+
+**Evaluation is conducted by Gemini Flash** (not Gemini Pro) — faster and cheaper,
+validated to produce consistent Elo scores matching human evaluation patterns.
+
+---
+
+## Updated Quick Reference Card
+
+```
+TASK                    MODE                      TEMP   FITZ   MODEL
+──────────────────────────────────────────────────────────────────────
+Full layout + text      prompt_layout_all_en      0.1    YES    dots.mocr
+Layout boxes only       prompt_layout_only_en     0.1    YES    dots.mocr
+Plain text              prompt_ocr                0.1    YES    dots.mocr
+Region extraction       prompt_grounding_ocr      0.1    YES*   dots.mocr
+Web page                prompt_web_parsing        0.1    NO     dots.mocr
+Scene/photo text        prompt_scene_spotting     0.1    NO     dots.mocr
+Chart/diagram → SVG     prompt_image_to_svg       0.9    NO     dots.mocr-svg
+General QA              prompt_general            0.1    NO     dots.mocr
+
+* grounding_ocr: apply pixel coordinate scaling before sending bbox
+
+OUTPUT VARIANTS
+──────────────────────────────────────────────────────────────────────
+filename.md             Full output (includes Page-header/footer)
+filename_nohf.md        Clean output (NO headers/footers) ← USE THIS
+filename.json           Structured layout cells array
+filename.jpg            Layout visualization with colored bboxes
+filtered=True           JSON parse failed; md_content is plain text fallback
+
+MULTI-PAGE PDF
+──────────────────────────────────────────────────────────────────────
+Separator between pages: \n\n---\n\n
+Threading:              ThreadPool up to 64 (HF mode: 1)
+Sort after:             Sort by page_no (imap_unordered loses order)
+
+ELO EVALUATION
+──────────────────────────────────────────────────────────────────────
+Score only:             Text accuracy, table data, formula semantics
+Ignore completely:      Formatting, layout, image handling, headers/footers
+Tie when:               Same content, different format
+Judge LLM:              Gemini Flash
+Output:                 {"winner": "1"|"2"|"tie", "reason": "..."}
+```
+
+---
+
+## Part 10 — Per-Mode Configuration Maps (Production-Derived)
+
+These three maps are extracted directly from production demo code. Any implementation must use them.
+
+### Map 1: Fitz Preprocessing Required Per Mode
+
+```
+PROMPT_TO_FITZ_PREPROCESS = {
+    "prompt_layout_all_en":  True,   # Document — needs DPI upsampling
+    "prompt_layout_only_en": True,   # Document detection — needs DPI upsampling
+    "prompt_ocr":            True,   # OCR — needs DPI upsampling
+    "prompt_web_parsing":    False,  # Web screenshots — already screen resolution
+    "prompt_scene_spotting": False,  # Scene photos — fitz degrades natural images
+    "prompt_image_to_svg":   False,  # Charts/graphics — fitz artifacts hurt SVG
+    "prompt_general":        False,  # QA — no preprocessing needed
+}
+```
+
+Fitz preprocessing converts image → PDF → re-rasters at 200 DPI. Designed for low-DPI
+scanned documents. Actively harmful for web screenshots and scene photos.
+Rule: Always look up the mode before preprocessing. Never apply fitz universally.
+
+---
+
+### Map 2: Temperature Per Mode
+
+```
+PROMPT_TO_TEMPERATURE = {
+    "prompt_layout_all_en":  0.1,   # Deterministic — exact JSON required
+    "prompt_layout_only_en": 0.1,
+    "prompt_ocr":            0.1,
+    "prompt_web_parsing":    0.1,
+    "prompt_scene_spotting": 0.1,
+    "prompt_image_to_svg":   0.9,   # EXCEPTION: SVG needs variation
+    "prompt_general":        0.1,   # Default — can be user-overridden
+}
+```
+
+The SVG exception is not a typo. SVG generation at temperature=0.1 produces rigid,
+repetitive SVG with poor coverage of complex graphical elements. At 0.9 the model
+explores more path options. Do not use a single temperature for all modes.
+
+---
+
+### Map 3: Model Routing Per Mode
+
+```
+PROMPT_TO_MODEL = {
+    "prompt_image_to_svg": "dots.mocr-svg",  # Specialized SVG model
+    # All other modes use dots.mocr (default)
+}
+```
+
+dots.mocr-svg is a specialized fine-tune. On Chartmimic benchmark: 0.905 vs 0.772 for
+the base model. On UniSVG: 0.902 vs 0.894. Always route SVG tasks to the SVG model.
+
+---
+
+### Map 4: Filename-Based Auto-Routing
+
+```
+DEMO_CASE_CONFIG = {
+    "doc":      {"prompt_mode": "prompt_layout_all_en"},
+    "formula":  {"prompt_mode": "prompt_layout_all_en"},
+    "table":    {"prompt_mode": "prompt_layout_all_en"},
+    "detect":   {"prompt_mode": "prompt_layout_only_en"},
+    "ocr":      {"prompt_mode": "prompt_ocr"},
+    "webpage":  {"prompt_mode": "prompt_web_parsing"},
+    "scene":    {"prompt_mode": "prompt_scene_spotting"},
+    "svg":      {"prompt_mode": "prompt_image_to_svg"},
+}
+DEFAULT_DEMO_CONFIG = {"prompt_mode": "prompt_layout_all_en"}
+```
+
+Matching: check if keyword is a case-insensitive substring of the filename. First match
+wins. Fall back to prompt_layout_all_en if no match.
+For ARCHITECT pinned slots: check filename keywords before calling any model.
+
+---
+
+## Part 11 — Critical Implementation Details
+
+### The `filtered` Flag — Degraded Output Detection
+
+When JSON parsing fails entirely, the parser falls back to cleaned plain text and sets
+`filtered=True` in the result object.
+
+What `filtered=True` means: cells_data is None, md_content is plain text, no structure.
+What to do: still usable as raw OCR text. Do not try to parse it as JSON.
+For ARCHITECT pinned slots: use the text but note the degraded quality.
+What causes it: token limit exceeded mid-JSON, corrupted output, OutputCleaner failing all recovery.
+
+---
+
+### The `_nohf` Variant — Clean Output for Context Injection
+
+The parser generates two markdown files per page:
+
+- `filename.md` — full content including Page-header and Page-footer (for human reading)
+- `filename_nohf.md` — content WITHOUT headers/footers (for benchmarks and context injection)
+
+For ARCHITECT pinned document slots: ALWAYS use the _nohf variant.
+Page headers/footers ("Chapter 3", "Page 47", "Confidential — Draft") are noise that
+pollutes the context window. Stripping them reduces size 5-15% and improves signal quality.
+
+---
+
+### Grounding OCR Bbox Coordinate Scaling
+
+The `prompt_grounding_ocr` mode requires bbox coordinates in the model's RESIZED input
+space, not the original image space.
+
+Scaling pipeline:
+```
+1. orig_w, orig_h = original_image.size
+2. input_h, input_w = smart_resize(orig_h, orig_w, factor=28, min_pixels=3136, max_pixels=11289600)
+3. scale_x = input_w / orig_w
+   scale_y = input_h / orig_h
+4. scaled_bbox = [int(x1*scale_x), int(y1*scale_y), int(x2*scale_x), int(y2*scale_y)]
+5. Prompt: "Extract text from the given bounding box: " + str(scaled_bbox)
+```
+
+Inverse (converting model output bboxes back to original space):
+```
+orig_bbox = [int(bx/scale_x), int(by/scale_y), int(bx2/scale_x), int(by2/scale_y)]
+```
+
+Without this scaling the model receives coordinates that don't correspond to the actual
+region in its resized view. Results will be incorrect or empty.
+
+---
+
+### Multi-Page PDF Threading Pattern
+
+```
+tasks = [{"origin_image": img, "page_idx": i} for i, img in enumerate(images)]
+
+with ThreadPool(min(total_pages, 64)) as pool:
+    results = list(pool.imap_unordered(_process_page, tasks))
+
+# imap_unordered returns pages out of order — MUST sort
+results.sort(key=lambda x: x["page_no"])
+
+# Join pages with markdown page break separator
+combined_md = "\n\n---\n\n".join(r["md_content"] for r in results)
+```
+
+Key points:
+- imap_unordered is faster (pages return as they finish, not in order)
+- Must sort by page_no after — never assume order
+- Page separator is "\n\n---\n\n" — the `---` is a markdown horizontal rule
+- HuggingFace inference mode: force num_thread=1 (no GPU parallelism available)
+- vLLM mode: up to 64 threads, capped at actual page count
+
+---
+
+### Parser Instance Caching
+
+Cache parser instances by model name. Do not recreate for each request.
+
+```python
+_parser_cache = {}
+
+def get_parser(model_name, min_pixels=None, max_pixels=None):
+    if model_name in _parser_cache:
+        parser = _parser_cache[model_name]
+        parser.min_pixels = min_pixels  # Update settings in-place
+        parser.max_pixels = max_pixels
+        return parser
+    parser = DotsOCRParser(model_name=model_name, ...)
+    _parser_cache[model_name] = parser
+    return parser
+```
+
+For HuggingFace mode, recreating a parser instance reloads model weights — catastrophic
+latency. Always check cache first.
+
+---
+
+### Custom Prompt — General QA Mode Only
+
+prompt_general is the ONLY mode that accepts a user-defined prompt.
+All other modes have locked templates that must not be overridden.
+
+```python
+if prompt_mode == "prompt_general":
+    effective_prompt = custom_prompt or ""
+else:
+    effective_prompt = dict_promptmode_to_prompt[prompt_mode]
+    # custom_prompt is silently ignored for all other modes
+```
+
+For general QA, temperature can be raised to 0.3-0.7 for more conversational responses.
+Example custom prompts: "What is the title of this document?", "Describe the chart in panel 3",
+"What year was this published?", "Which variable shows the strongest correlation?"
+
+---
+
+## Part 12 — Elo Evaluation Rubric
+
+Source: tools/elo_score_prompt.py. The complete scoring system for comparing any two
+OCR model outputs. Reusable for any document parsing evaluation.
+
+A judge LLM (Gemini Flash in production) compares two model outputs against the source image.
+
+### Score ONLY These (Content Accuracy)
+
+- Text accuracy: character errors, missing words, hallucinated content
+- Table accuracy: cell data correctness, completeness, row/column alignment
+- Formula accuracy: symbol preservation, completeness, semantic equivalence
+
+### ABSOLUTELY IGNORE These
+
+- Markdown formatting differences (header levels, list styles, bold/italic)
+- Layout, newlines, indentation, paragraph breaks
+- Table border syntax differences
+- Equivalent LaTeX representations
+- Headers, footers, page numbers
+- Image/figure processing differences — whether a model outputs a bbox, describes the image,
+  extracts embedded text, or skips the figure entirely — these are ALL equivalent. NEVER
+  declare a winner based on image handling.
+
+### Tie Criteria
+
+Declare a tie when: content is identical but format differs, table data is identical but
+syntax differs, formulas are semantically equivalent, both models share the same minor error,
+or main text is accurate but one model caught a footer the other missed.
+
+Rule: It is better to judge tie than to incorrectly declare a winner based on formatting.
+Content accuracy of the main text is the ONLY standard.
+
+### Winner Criteria
+
+Declare a winner ONLY for significant differences in: typos and character errors,
+omissions of actual content, hallucinated content, table data errors, formula semantic errors.
+
+### Output Format
+
+```json
+{"winner": "1", "reason": "Model 1 correctly identified the formula as E=mc^2 while Model 2 omitted the superscript"}
+{"winner": "2", "reason": "Model 2 extracted all 5 table rows; Model 1 missed the last row entirely"}
+{"winner": "tie", "reason": "Identical text content. Model 1 used HTML table syntax, Model 2 used pipe tables. Data identical. Image regions ignored per protocol."}
+```
+
+The value of "winner" must be exactly "1", "2", or "tie".
+
+---
+
+## Updated Quick Reference Card (Complete)
+
+```
+TASK                    MODE                      TEMP   FITZ   MODEL
+----------------------------------------------------------------------
+Full layout + text      prompt_layout_all_en      0.1    YES    dots.mocr
+Layout boxes only       prompt_layout_only_en     0.1    YES    dots.mocr
+Plain text              prompt_ocr                0.1    YES    dots.mocr
+Region extraction       prompt_grounding_ocr      0.1    YES*   dots.mocr
+Web page                prompt_web_parsing        0.1    NO     dots.mocr
+Scene/photo text        prompt_scene_spotting     0.1    NO     dots.mocr
+Chart/diagram -> SVG    prompt_image_to_svg       0.9    NO     dots.mocr-svg
+General QA              prompt_general            0.1    NO     dots.mocr
+
+* grounding_ocr: scale bbox coordinates to model input space before sending
+
+OUTPUT VARIANTS
+----------------------------------------------------------------------
+filename.md             Full output (includes Page-header/footer)
+filename_nohf.md        Clean output (NO headers/footers) <- USE FOR ARCHITECT
+filename.json           Structured layout cells array
+filename.jpg            Layout visualization
+filtered=True           JSON failed; md_content is plain text fallback
+
+MULTI-PAGE PDF
+----------------------------------------------------------------------
+Page separator:         \n\n---\n\n
+Max threads (vLLM):     64 (capped at page count)
+Max threads (HF):       1
+Sort results by:        page_no (imap_unordered loses order)
+
+ELO EVALUATION
+----------------------------------------------------------------------
+Score only:             Text accuracy, table data, formula semantics
+Ignore completely:      Formatting, layout, image handling, headers/footers
+Tie when:               Same content, different format
+Judge LLM:              Gemini Flash
+Output format:          {"winner": "1"|"2"|"tie", "reason": "..."}
+```
