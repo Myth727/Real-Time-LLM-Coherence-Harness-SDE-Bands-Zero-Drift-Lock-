@@ -1,7 +1,7 @@
 # Security Policy
 
 ## ARCHITECT — Universal Coherence Engine
-**Current version:** V1.5.43  
+**Current version:** V2.2  
 **Contact:** 𝕏 @RaccoonStampede · @Prosperous727
 
 ---
@@ -54,9 +54,13 @@ ARCHITECT persists two keys to `window.storage` (artifact) or `localStorage` (Ve
 |-----|----------|
 | `hpdl_config` | Settings, feature toggles, math constants, framework mode choice (Hudson/Standard), Advanced tab state |
 | `hpdl_data` | Coherence scores, event log, RAG cache, Kalman state, bookmarks |
+| `arch_fb` | AutoTune feedback profiles — learned parameter adjustments per context type (no conversation content) |
+| `arch_dp` | Display preferences — theme, font size, compact mode |
+| `arch_pinned` | Pinned document contents — user-uploaded reference files (stored locally, never transmitted) |
 
-**Neither key contains conversation content, API keys, or personal data.**
-Session data stored here is mathematical metrics only.
+**None of these keys contain API keys or personal data.**
+Session data stored here is mathematical metrics and user settings only.
+Pinned document contents are stored locally in your browser only — never sent to any server.
 
 ---
 

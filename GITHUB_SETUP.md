@@ -1,5 +1,5 @@
 # ARCHITECT — Universal Coherence Engine · GitHub Setup
-*Version 1.5.43*
+*Version 2.2*
 
 ## Quick Start (Artifact — no install needed)
 
@@ -52,6 +52,12 @@ DEFAULT · TECHNICAL · CREATIVE · RESEARCH · MEDICAL · **CIRCUIT** · CUSTOM
 - Session rewind (20-turn buffer)
 - Research export (CSV + JSONL)
 - SDE path visualization (live OU ensemble on chart)
+- AutoTune — per-turn context detection, optimal temperature/sampling selection
+- Feedback loop — EMA learning from thumbs up/down, persists across sessions
+- Reflexive session analysis — coherence fingerprint → LLM config suggestions
+- Knowledge Anchors — domain vocabulary (Medical, Legal, Engineering, Finance, Research)
+- Persistent Document Slots — 3 pinned docs, injected every turn, never pruned
+- Display Preferences — 4 themes, font size, compact mode
 - Circuit Signal (full adder pass rate → coherence readout)
 
 ## Experimental Features (Advanced Tab)

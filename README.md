@@ -19,80 +19,54 @@ It runs two ways depending on how you use it.
 
 ## ▶ Option 1 — Paste into Claude (instant, no setup)
 
-**1.** Download `ARCHITECT.jsx` from the root of this repo
-
-**2.** Open [claude.ai](https://claude.ai) and start a new conversation
-
-**3.** Paste this:
-```
-Create an artifact from this file. Run it exactly as-is.
-[paste the full contents of ARCHITECT.jsx]
-```
+1. Download `ARCHITECT.jsx` from the root of this repo
+2. Open [claude.ai](https://claude.ai) and start a new conversation
+3. Paste: `Create an artifact from this file. Run it exactly as-is.` followed by the full file contents
 
 Works immediately. No account, no server, no install.
 
-**What you get:** Full ARCHITECT — coherence scoring, Kalman filter, GARCH, Monte Carlo SDE bands, all signal detection, all presets, AutoTune, feedback loop, reflexive analysis, knowledge anchors, persistent document slots, display preferences, session rewind, research export.
-
 ---
 
-## ▶ Option 2 — Deploy on Vercel (V2.2, any browser)
+## ▶ Option 2 — Deploy on Vercel (any browser, cross-session memory)
 
 **Live demo:** [architect-universal-coherence-engin.vercel.app](https://architect-universal-coherence-engin.vercel.app/)
-
-The same `ARCHITECT.jsx` lives at `components/ARCHITECT.jsx` inside the Next.js project. Vercel activates extra capabilities that require a server and Web Worker.
-
-**Additional on Vercel:**
-- **Semantic coherence scoring** — all-MiniLM-L6-v2 ONNX neural embeddings (~23MB, cached in IndexedDB). Meaning-based, not word-based.
-- **Unscented Kalman Filter (UKF)** — sigma-point propagation handles nonlinear drift
-- **Multi-provider** — Anthropic, OpenAI, or Grok. Your key, your choice.
-- **Key persistence** — API key saved to browser. Type it once.
-- **Cross-session memory** — pinned documents, display preferences, and learned feedback profiles persist across sessions
-- **Works on any device** — no Claude account needed
-
-### Deploy your own instance
 
 1. Fork this repo
 2. Go to [vercel.com](https://vercel.com) → **Add New Project** → import your fork
 3. Vercel auto-detects Next.js → tap **Deploy**
-4. No environment variables needed — users provide their own API keys
 
-### Project structure
+No environment variables needed. Users provide their own API keys.
 
-```
-ARCHITECT.jsx              ← root copy — paste this into Claude
-components/
-  ARCHITECT.jsx            ← same file, used by Next.js
-pages/
-  index.tsx                ← mounts the app
-  api/
-    proxy.ts               ← multi-provider proxy (Anthropic · OpenAI · Grok)
-public/
-  embedder.worker.js       ← neural embedding Web Worker
-sdk/
-  *.ts                     ← TypeScript math library
-```
+**Vercel adds:**
+- Semantic coherence scoring — all-MiniLM-L6-v2 ONNX neural embeddings (~23MB, cached after first load)
+- Unscented Kalman Filter (UKF) — sigma-point propagation for nonlinear dynamics
+- Multi-provider — Anthropic, OpenAI, or Grok
+- Cross-session persistence — pinned docs, feedback profiles, session memory survive browser restarts
 
 ---
 
 ## What ARCHITECT does
 
-**Core engine:** Per-turn coherence scoring → Kalman-smoothed trajectory → GARCH(1,1) variance modeling → Monte Carlo SDE uncertainty bands → pipe injection → post-audit loop → drift escalation → corrective directives.
+**Core monitoring engine:** Per-turn coherence scoring → Kalman-smoothed trajectory → GARCH(1,1) variance modeling → Monte Carlo SDE uncertainty bands → compressed pipe injection → post-audit loop → drift escalation → corrective directives.
 
 **V2.2 intelligence layer:**
-- **AutoTune** — detects conversation context per turn, selects optimal temperature and sampling parameters automatically
-- **Feedback loop** — thumbs up/down per response learns your preferences via EMA, persists across sessions
-- **Reflexive analysis** — "Analyze Session" sends coherence fingerprint to the LLM and returns concrete config improvements
-- **Knowledge anchors** — domain vocabulary (Medical, Legal, Engineering, Finance, Research) calibrates drift detection to your field
-- **Persistent document slots** — pin up to 3 documents that stay in context every turn, never forgotten
-- **Display preferences** — 4 themes, font size slider, compact mode for phones
 
-**Signal detection:** 6 hallucination proxies (H-signals), 7 behavioral proxies (B-signals), EWMA trend tracking, semantic anchor distance monitoring, Integrity Floor breach detection.
+| Feature | What it does |
+|---|---|
+| **AutoTune** | Detects conversation context per turn (code/creative/analytical/conversational/chaotic), selects optimal temperature and sampling params automatically |
+| **Feedback Loop** | +1/−1 thumbs per response. EMA learning personalizes AutoTune profiles. Persists across sessions. |
+| **Reflexive Analysis** | Sends session coherence fingerprint to LLM → returns prioritized config suggestions |
+| **Knowledge Anchors** | Domain vocabulary (Medical, Legal, Engineering, Finance, Research) calibrates drift detection to your field |
+| **Persistent Doc Slots** | Pin up to 3 documents — injected every turn before harness content, never pruned, never forgotten |
+| **Session Memory** | Auto-compresses history at turns 10/20/30 into a protected context slot. Solves long-session forgetfulness. |
+| **META Panel** | Second AI chat with full ARCHITECT architecture + live session data embedded. Answers "why did coherence drop at turn 7" with exact values. |
+| **Quick Tools Drawer** | CALC (SDE/GARCH parameter preview), VERIFY (15 live session checks), EXPORT (CSV/JSONL/TXT) |
 
 ---
 
 ## Feature Comparison
 
-| Feature | Option 1 (Claude) | Option 2 (Vercel) |
+| Feature | Claude artifact | Vercel |
 |---|:---:|:---:|
 | TF-IDF + JSD coherence scoring | ✓ | ✓ fallback |
 | Semantic embeddings (all-MiniLM-L6-v2) | — | ✓ |
@@ -100,20 +74,20 @@ sdk/
 | Unscented Kalman Filter (UKF) | — | ✓ |
 | GARCH(1,1) + jump-diffusion | ✓ | ✓ |
 | Monte Carlo SDE bands | ✓ | ✓ |
-| EWMA + Anchor chart lines | ✓ | ✓ |
-| AutoTune (per-turn context detection) | ✓ | ✓ |
+| AutoTune | ✓ | ✓ |
 | Feedback loop (EMA learning) | ✓ | ✓ |
 | Reflexive session analysis | ✓ | ✓ |
-| Knowledge Anchors (domain calibration) | ✓ | ✓ |
-| Persistent Document Slots (3 slots) | ✓ session | ✓ cross-session |
-| Display preferences (theme, font, compact) | ✓ | ✓ |
+| Knowledge Anchors | ✓ | ✓ |
+| Persistent Document Slots | ✓ session | ✓ cross-session |
+| Strategic Session Memory | ✓ session | ✓ cross-session |
+| META Panel | ✓ | ✓ |
+| Quick Tools (CALC/VERIFY/EXPORT) | ✓ | ✓ |
+| Display preferences (themes, font, compact) | ✓ | ✓ |
 | H-signals + B-signals | ✓ | ✓ |
-| Session health, rewind, RAG | ✓ | ✓ |
+| Session rewind, RAG, bookmarks | ✓ | ✓ |
 | Integrity Floor | ✓ | ✓ |
-| Framework Mode (HUDSON / STANDARD) | ✓ | ✓ |
 | Multi-provider (OpenAI, Grok) | — | ✓ |
 | API key persistence | — | ✓ |
-| Cross-session memory | — | ✓ |
 | Works without Claude account | — | ✓ |
 
 ---
@@ -136,13 +110,13 @@ sdk/
 
 All behind **TUNE → ⚗ ADVANCED**. Labeled experimental.
 
-- **Alt SDE Models** — CIR or Heston stochastic volatility
-- **Custom Rails** — behavioral guidelines injected into every prompt
-- **Stability Panel** — convergence tracking toward RESONANCE_ANCHOR
-- **Edit Constants** — tune κ (0.00–5.00), live λ=1/(1+κ) display
-- **MHT Study** — Metatron-Hudson Theory SDE module
-- **Poole Manifold CA Sim** — 3D cellular automaton, full adder truth table
-- **Integrity Floor** — DRIFT vs INTEGRITY BREACH threshold detection
+- Alt SDE Models (CIR, Heston stochastic volatility)
+- Custom behavioral rails
+- Stability convergence panel (RESONANCE_ANCHOR = 623.81 Hz)
+- Edit constants (κ, ε, GARCH params)
+- MHT Study (Metatron-Hudson Theory SDE)
+- Poole Manifold CA Simulator (3D cellular automaton, full adder verification)
+- Integrity Floor (DRIFT vs INTEGRITY BREACH detection)
 
 ---
 
@@ -158,6 +132,24 @@ const newVar = updateSmoothedVariance(scoreHistory, prev, cfg);
 const kalman = kalmanStep(state, score, turn * (2*Math.PI/12), SDE_PARAMS);
 const pipe   = buildPipeInjection(newVar, kalman.x, kalman.P,
                  calmStreak, driftCount, 'audit', turn, 0, 0, null, cfg);
+```
+
+---
+
+## Project Structure
+
+```
+ARCHITECT.jsx              ← paste into Claude
+components/ARCHITECT.jsx   ← same file, used by Next.js
+pages/api/proxy.ts         ← multi-provider proxy (Anthropic · OpenAI · Grok)
+pages/index.tsx            ← Next.js entry
+public/embedder.worker.js  ← neural embedding Web Worker (Vercel only)
+sdk/*.ts                   ← TypeScript math library
+.claude/evals/ARCHITECT_EVALS.md  ← 15-check release checklist
+ai/knowledge/
+  DIALOGUE_BASELINES.md        ← healthy session reference for all AI models
+  HALLUCINATION_REFERENCE.md   ← H-signal proxy guide for all AI models
+  ARCHITECT_CODING_RULES.md    ← coding invariants for any AI working on this repo
 ```
 
 ---

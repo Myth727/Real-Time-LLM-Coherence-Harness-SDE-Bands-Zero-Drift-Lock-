@@ -5,96 +5,95 @@
 
 ## V2.2
 
-### AutoTune · Feedback Loop · Reflexive Analysis · Knowledge Anchors · Display Preferences · Compressed Pipe
+### Persistent Document Slots · Strategic Session Memory · META Panel · Quick Tools Drawer · Storage Unification · AI Knowledge Seeds
 
-This is the first intelligence upgrade to ARCHITECT. Previous versions monitored and corrected. V2.2 optimizes, learns, and self-improves.
+V2.2 is the workspace upgrade. V2.1 made ARCHITECT smarter. V2.2 gives users the tools to work with it at full depth — persistent context, self-analysis, live diagnostics, and exports.
 
-**Step 1 — Compressed Pipe (60–70% fewer tokens)**
+**Persistent Document Slots**
 
-The harness pipe injection that runs every turn was rewritten from verbose multi-line format to a compact single-line notation. Average session overhead drops from ~2,000 tokens to ~600 tokens with identical information content. The pipe key is injected once at session start so the model reads abbreviations correctly.
+3 pinned document slots above the message input. Upload any text file. Pinned docs inject into the system prompt on every single turn — positioned before harness content, before RAG, before everything. Never pruned. Never forgotten. 40KB max per slot, truncated with notice if over. Persist to `localStorage` across sessions on Vercel.
 
-Old format (~350 chars/turn):
-```
-[SYSTEM_INTERNAL — ARCHITECT PIPE | Turn 7]
-σ²=0.142000 | State=CAUTION
-Kalman x̂=0.8871 | P=0.00041
-...
-```
-New format (~95 chars/turn):
-```
-[A|t7|v=0.14200|st=CAU|kx=0.887|kp=0.0004|cl=2|dr=1|md=AUD|h=0|b=0]->CONSOLIDATE.persist-up.[/A]
-```
+System prompt injection order: `BASE_SYSTEM + pinnedDocs + sessionMemory + HARNESS + RAG + pipe + gate + mute + rails + anchor`
 
-**Step 2 — AutoTune (per-turn context detection)**
+**Strategic Session Memory**
 
-Before each API call, ARCHITECT now detects the conversation context type (code / creative / analytical / conversational / chaotic) using pattern matching against the current message and recent history. It then selects optimal generation parameters for that context type and passes them to the proxy:
+Auto-fires at turns 10, 20, and 30. Background API call compresses conversation history into a ~400-word structured summary. Injects into every subsequent system prompt in a protected slot after pinned docs, before harness. The AI carries context forward even as individual turns fall out of the context window. `MEM T1-10` indicator in sidebar with CLEAR button.
 
-- Code sessions: temperature 0.15, top_p 0.80 — precise, deterministic
-- Creative sessions: temperature 1.15, top_p 0.95 — high entropy, diverse
-- Analytical sessions: temperature 0.40, top_p 0.88 — structured but not rigid
-- Conversational: temperature 0.75, top_p 0.90 — natural and fluid
-- Chaotic: temperature 1.70, top_p 0.99 — maximum entropy
+**META Panel — ARCHITECT self-analysis AI**
 
-Low-confidence detections blend with the conversational baseline proportionally. `proxy.ts` updated to forward temperature and top_p to all three providers with clamping to safe ranges.
+`META` button opens a second chat box. The AI has the complete ARCHITECT architecture embedded in its system prompt — every formula, every threshold, every preset value, the full signal detection logic, AutoTune profiles, and the two-layer architecture theory. Also receives live session data on every message: coherence scores, drift count, signal counts, AutoTune context, session memory status.
 
-**Step 3 — Feedback Loop (EMA learning)**
+Ask it anything about the current session and get specific answers with exact values.
 
-Each assistant response now shows 👍 / 👎 buttons. Rating a response records the AutoTune parameters that produced it alongside the context type and passes both through an Exponential Moving Average:
+**Quick Tools Drawer**
 
-- Positive ratings push the EMA of that context type's parameters toward what worked
-- Negative ratings push it away
-- Adjustments activate after 3 samples, reach up to 50% influence after 20 samples
-- Learned profiles persist to `localStorage` across sessions
+`TOOLS` button opens a three-tab panel:
 
-After 10–20 sessions ARCHITECT has a personalized parameter profile per context type. The sidebar shows `✓ learned` when a rating is recorded.
+- **CALC** — SDE/GARCH parameter preview with live output: λ (damping), variance state, GARCH steady-state σ², persistence level, stability warning if α+β ≥ 1.
+- **VERIFY** — 15 live checks against the current session: messages flowing, Kalman active, variance computed, preset loaded, API key set, AutoTune enabled, domain anchor set, pinned docs loaded, session memory active, no stuck drift. Green/red in real time.
+- **EXPORT** — CSV (per-turn scores, variance, Kalman, signal counts), JSONL (full event log), TXT (full conversation with coherence scores annotated inline).
 
-**Step 4 — Reflexive Session Analysis**
+**Storage Unification**
 
-New `⟲ ANALYZE SESSION` button in the sidebar (appears after 3 turns). Sends the session's coherence fingerprint — per-turn scores, drift events, H-signal count, B-signal count, active preset — to the LLM with a structured prompt asking for concrete configuration improvements. Returns prioritized suggestions (high / medium / low) with specific actions. User can accept or dismiss. Requires API key to be set.
+All V2.x `localStorage` calls replaced with a unified `_storageSet` / `_storageGet` / `_storageDel` adapter. Chain: localStorage → window.storage → in-memory fallback. Safe in private browsing, the Claude artifact sandbox, and any environment where localStorage throws.
 
-**Step 5 — Knowledge Anchors**
+**AI Knowledge Seeds (`ai/knowledge/`)**
 
-Domain selector in the DISPLAY tab. Choosing a domain loads a curated vocabulary (20 terms) into the session system prompt, calibrating drift detection to what coherent responses look like in that field:
+Three universal reference files readable by any AI model — Claude, GPT-4, Grok, Gemini, or any future model:
 
-- Medical / Clinical
-- Legal / Compliance
-- Software / Engineering
-- Finance / Business
-- Research / Academic
-- General (default, no injection)
+- `DIALOGUE_BASELINES.md` — What healthy dialogue looks like in ARCHITECT terms. Score ranges by conversation type, natural variation vs real drift, B-signal false positive rates.
+- `HALLUCINATION_REFERENCE.md` — All five H-signal proxies in detail. True/false positive scenarios for each. Cross-model behavior differences. The FALSE+ workflow.
+- `ARCHITECT_CODING_RULES.md` — Every coding invariant that has caused a real regression. The single-file rule, displayPrefs local state rule, storage adapter, injection order, fixed constants.
 
-**Step 6 — Display Preferences (Mobile UI)**
+**localStorage keys added in V2.2**
 
-Full DISPLAY & INTELLIGENCE tab replacing the previous placeholder:
-- 4 theme selector: Navy (default), Dark, Light, High Contrast
-- Font size slider: 10–18px with reset button. Saves to localStorage.
-- Compact mode toggle: smaller message bubbles and tighter spacing for phone screens
-- All preferences persist across sessions via localStorage
-
-**Step 7 — proxy.ts updated**
-
-`pages/api/proxy.ts` now accepts `temperature`, `top_p`, and `frequency_penalty` from the request body and forwards them to all three providers (Anthropic, OpenAI, Grok) with range clamping. Anthropic gets temperature + top_p. OpenAI/Grok also get frequency_penalty.
+| Key | Contents |
+|-----|----------|
+| `arch_fb` | AutoTune feedback profiles |
+| `arch_dp` | Display preferences |
+| `arch_pinned` | Pinned document contents |
+| `arch_mem` | Session memory summaries |
+| `architect_api_key` | API key |
+| `architect_provider` | Provider selection |
 
 ---
 
----
+## V2.1
+
+### Compressed Pipe · AutoTune · Feedback Loop · Reflexive Analysis · Knowledge Anchors · Display Preferences
+
+V2.1 was the first intelligence upgrade to ARCHITECT. Previous versions monitored and corrected. V2.1 optimizes, learns, and self-improves.
+
+**Compressed Pipe (60–70% fewer tokens)**
+
+Pipe injection rewritten from verbose multi-line to compact single-line notation. Session overhead drops from ~2,000 tokens to ~600 tokens with identical signal content.
+
+Old: `[SYSTEM_INTERNAL — ARCHITECT PIPE | Turn 7]\nσ²=0.142000 | State=CAUTION...`
+New: `[A|t7|v=0.14200|st=CAU|kx=0.887|kp=0.0004|cl=2|dr=1|md=AUD|h=0|b=0]->CONSOLIDATE.persist-up.[/A]`
+
+Pipe key injected once in BASE_SYSTEM so the model decodes abbreviations correctly.
+
+**AutoTune — per-turn context detection**
+
+Detects conversation context (code / creative / analytical / conversational / chaotic) on every turn. Selects optimal temperature and sampling parameters automatically. Code: T=0.15. Creative: T=1.15. Analytical: T=0.40. Conversational: T=0.75. Chaotic: T=1.70. `proxy.ts` updated to forward params to all three providers.
+
+**Feedback Loop — EMA learning**
+
++1/−1 thumbs per assistant response. EMA (alpha=0.3) learns which parameters work for your usage patterns. Activates after 3 samples, reaches 50% influence at 20 samples. Persists to `localStorage` across sessions.
+
+**Reflexive Session Analysis**
+
+`↳ ANALYZE SESSION` button appears after 3 turns. Sends coherence fingerprint to the LLM and returns prioritized config suggestions (high/medium/low) with specific actions.
+
+**Knowledge Anchors**
+
+Domain selector in DISPLAY tab. Loads 20 domain-specific terms into the system prompt. Domains: Medical/Clinical, Legal/Compliance, Software/Engineering, Finance/Business, Research/Academic.
+
+**Display Preferences**
+
+Full DISPLAY & INTELLIGENCE tab: 4 themes (Navy, Dark, Light, High Contrast), font size slider 10–18px, compact mode. All persist to `localStorage`. `displayPrefs` is local to TuneModal.
 
 ---
-
-### V2.2 — Persistent Document Slots
-
-Up to 3 documents can now be pinned to a session and injected into the system prompt on every single turn. They never get pruned, never get forgotten, and survive context compression, rewind, and long sessions.
-
-**How it works:**
-- A `PINNED` strip above the message input shows 3 slot buttons
-- Tap any empty slot to upload a file (txt, md, json, csv, js, ts, py, html, and more)
-- Filled slots show filename and size as teal chips with an `×` to remove
-- Docs over 40KB are truncated with a notice; docs under 40KB load in full
-- All pinned docs inject into the system prompt labeled `[PINNED_DOC_1: filename]...[/PINNED_DOC_1]` — positioned before harness injections, before RAG, before everything
-- Contents persist to `localStorage` — Vercel version retains pinned docs across sessions
-
-**What this solves:** AI "forgetting" documents mid-session. The document is re-injected from local storage on every turn regardless of context window state. The AI cannot forget it.
-
 
 ## V2.0
 

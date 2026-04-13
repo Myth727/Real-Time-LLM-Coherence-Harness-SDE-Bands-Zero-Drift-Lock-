@@ -1,5 +1,5 @@
 # Contributing to ARCHITECT
-*Version 1.5.43*
+*Version 2.2*
 
 Thank you for your interest in contributing to ARCHITECT — a universal coherence engine built on top of Claude.
 
@@ -31,6 +31,10 @@ ARCHITECT is an active R&D project. The core (PRESETS, FEATURES, MATH tabs) is s
 - Better RAG retrieval strategies
 - Standalone deploy path (Vercel / Next.js)
 - SDK test coverage
+- META panel: second AI chat box with ARCHITECT architecture embedded as context
+- Strategic session memory: compressed history summaries at turn 10/20/30
+- Quick Tools Drawer: SDE calculator, live eval runner, CSV/PDF exporter
+- MCP server: expose ARCHITECT as an MCP tool for Claude Code sessions
 - G0DM0D3 / Hermes Agent integration research
 - Poole Manifold CA extensions (3D rendering, larger grid sizes, animated step mode)
 - Circuit Benchmark improvements (additional logic gate tests beyond full adder)
