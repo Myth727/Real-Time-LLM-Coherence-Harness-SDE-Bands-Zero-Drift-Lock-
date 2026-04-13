@@ -58,8 +58,8 @@ const Home: NextPage = () => {
   return (
     <>
       <Head>
-        <title>ARCHITECT — Universal Coherence Engine V2.2</title>
-        <meta name="description" content="Full-stack LLM coherence engine with AutoTune, feedback learning, and reflexive analysis — Hudson & Perry Research" />
+        <title>ARCHITECT — Universal Coherence Engine V2.3</title>
+        <meta name="description" content="Full-stack LLM coherence engine with Langevin/MTJ spintronic noise model, AutoTune, feedback learning, and reflexive analysis — Hudson & Perry Research" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
