@@ -57,6 +57,9 @@ ARCHITECT persists two keys to `window.storage` (artifact) or `localStorage` (Ve
 | `arch_fb` | AutoTune feedback profiles — learned parameter adjustments per context type (no conversation content) |
 | `arch_dp` | Display preferences — theme, font size, compact mode |
 | `arch_pinned` | Pinned document contents — user-uploaded reference files (stored locally, never transmitted) |
+| `arch_mem` | Session memory summaries — compressed conversation history (stored locally, never transmitted) |
+| `architect_api_key` | API key — stored locally, transmitted only to your chosen provider endpoint |
+| `architect_provider` | Provider selection (anthropic/openai/grok) |
 
 **None of these keys contain API keys or personal data.**
 Session data stored here is mathematical metrics and user settings only.

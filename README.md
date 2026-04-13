@@ -61,6 +61,7 @@ No environment variables needed. Users provide their own API keys.
 | **Session Memory** | Auto-compresses history at turns 10/20/30 into a protected context slot. Solves long-session forgetfulness. |
 | **META Panel** | Second AI chat with full ARCHITECT architecture + live session data embedded. Answers "why did coherence drop at turn 7" with exact values. |
 | **Quick Tools Drawer** | CALC (SDE/GARCH parameter preview), VERIFY (15 live session checks), EXPORT (CSV/JSONL/TXT) |
+| **Storage Unification** | All persistence through unified adapter: localStorage → window.storage → in-memory fallback. Safe in private mode and artifact sandbox. |
 
 ---
 
