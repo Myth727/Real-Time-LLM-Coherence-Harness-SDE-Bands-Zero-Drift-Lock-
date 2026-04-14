@@ -5,58 +5,44 @@
 
 ## V2.3
 
-### Langevin Noise Model — Spintronic/MTJ Thermal Physics Extension
+### Langevin Noise Model · Critical Bug Fixes
 
-V2.3 extends the SDE Wiener process with a physically-grounded noise model derived from
-magnetic tunnel junction (MTJ) thermal fluctuation physics.
+---
 
-**What changed in the math:**
+**Langevin Noise Extension — Spintronic/MTJ Thermal Physics**
 
-The Wiener increment `b·√dt·N(0,1)` is replaced with a Langevin-weighted draw:
+The SDE Wiener process now uses a Langevin-weighted noise draw:
 
 ```
 dW_t = b · √dt · z · η
 η = √(1 + 1/(2Δ))
-z ~ N(0,1)
 ```
 
-`Δ` (MTJ_DELTA) is the thermal stability factor from the Neel-Brown relaxation model
-(Brown 1963; Koch et al. 2000). Default Δ=50 corresponds to a room-temperature MTJ
-with moderate thermal stability. As Δ→∞, η→1 and the model reduces to classical OU.
+Δ (MTJ_DELTA) = thermal stability factor, default 50. Toggle ON/OFF in FEATURES tab. Δ editable 10–200. At Δ=50, η≈1.005 (subtle). At Δ=20, η≈1.025 (meaningful heavier tails). As Δ→∞, reduces to classical OU.
 
-**Effect on Monte Carlo bands:** Slightly wider and more asymmetric under high variance.
-At the default Δ=50, η=1.0100 — a 1% tail weight increase. At Δ=20, η=1.0247. Subtle
-but physically motivated. More robust uncertainty estimates in high-drift regimes.
+Physical basis: Neel-Brown relaxation model for MTJ thermal switching (Brown 1963; Koch et al. 2000). Cross-domain convergence — same mathematical family as LLM coherence drift dynamics.
 
-**Why this belongs in the main engine, not the Advanced tab:**
+Honest framing: The Langevin math is correct. The direct empirical link to LLM coherence is theoretical, not yet co-validated against actual hardware. Listed under Requires Validation in FRAMEWORK.md.
 
-The Langevin equation is established physics — Brownian motion on an energy landscape.
-The same mathematical framework governs both MTJ thermal switching and stochastic
-differential equations for coherence drift. This is cross-domain convergence, not
-speculation — the same pattern as ε=0.05 appearing in neuroscience and the drift law.
-GARCH came from financial econometrics. Kalman from aerospace. Langevin from physics.
-All borrowed, all validated, all applied here.
+---
 
-**Honest framing (preserved throughout):** The math is correct and the physics is real.
-The direct empirical link between MTJ parameters and LLM coherence — i.e., whether
-Δ=50 vs Δ=40 measurably improves coherence prediction — requires validation against
-actual spintronic hardware. Listed under Requires Validation in FRAMEWORK.md.
+**Bug Fixes (V2.3.1)**
 
-**Feature controls:**
-- LANGEVIN NOISE MODEL toggle in FEATURES tab — default ON
-- Δ slider and number input — range 10–200, default 50
-- Live readout: η value and tail weight category (HIGH/MODERATE/LOW)
-- RESET button restores Δ=50, toggle ON
-- Persists to config save/restore
+Four bugs introduced during V2.2/V2.3 development — all resolved:
 
-**Research context:**
-Prompted by Grok's analysis of spintronics-neuromorphic robotics research (MTJs,
-skyrmions) and the identified synergy with ARCHITECT's control-theory stack.
-Grok identified that both systems draw from cybernetics/feedback dynamics for
-emergent real-time intelligence — hardware reflexes (spintronic) + software coherence
-(ARCHITECT). The Langevin model is the first concrete bridge between these layers.
-Future directions: Langevin from actual MTJ measurements, skyrmion lattice simulation
-via WebAssembly (MuMax3), multimodal coherence for edge deployment on neuromorphic chips.
+**Bug 1 — Stale closures in sendMessage (silent failure)**
+Six V2.2/V2.3 state variables were used inside `sendMessage` but missing from its `useCallback` dependency array: `pinnedDocs`, `sessionMemory`, `domainAnchor`, `autoTuneEnabled`, `feedbackState`, `provider`. React froze stale initial values. System prompt was built with empty pinned docs, missing memory injection, and wrong provider header. Requests failed silently or produced malformed calls. Fixed: all six added to deps array.
+
+**Bug 2 — `userMessage is not defined` (crash on send)**
+AutoTune block referenced `userMessage` — a variable that does not exist in `sendMessage`. The correct variable is `text` (raw input string). Every send attempt crashed with a runtime error. Fixed: `userMessage` → `text`.
+
+**Bug 3 — HTTP 404 in Claude artifact (complete failure)**
+`API_ENDPOINT` was hardcoded to `/api/proxy` — a Next.js route that only exists on Vercel. In the Claude artifact sandbox there is no proxy server, so every request 404'd. Fixed: runtime environment detection. On `vercel.app` hostname → `/api/proxy`. Everywhere else (Claude artifact, localhost, etc.) → `https://api.anthropic.com/v1/messages` directly. Proxy-specific headers (`x-architect-provider`) only sent on Vercel path.
+
+**Bug 4 — `temperature` and `top_p` conflict (API rejection)**
+AutoTune sent both `temperature` and `top_p` in the same API request. Claude's API rejects this combination. Fixed: `top_p` removed from API call. `temperature` is the primary AutoTune control knob. `top_p` retained in AutoTune profiles for future use but no longer transmitted.
+
+**Impact:** All four bugs combined meant the paste-into-Claude deployment path was completely non-functional since V2.2. Vercel path was affected by bugs 1, 2, and 4. All resolved in V2.3.1.
 
 ---
 
