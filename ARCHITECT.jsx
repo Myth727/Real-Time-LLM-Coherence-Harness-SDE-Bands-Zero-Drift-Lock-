@@ -17,7 +17,14 @@ import {
 // ═══════════════════════════════════════════════════════════════
 
 // ── Deployment ─────────────────────────────────────────────────
-const API_ENDPOINT = "/api/proxy"; // Next.js serverless proxy — see pages/api/proxy.ts
+// Environment detection: use /api/proxy on Vercel, direct API everywhere else
+// Vercel deployment hostname contains "vercel.app" or is the specific deployment
+// Claude artifact sandbox, localhost, and all other contexts use direct API
+const _isVercel = typeof window !== "undefined" &&
+  typeof window.location !== "undefined" &&
+  (window.location.hostname.includes("vercel.app") ||
+   window.location.hostname.includes("architect-universal"));
+const API_ENDPOINT = _isVercel ? "/api/proxy" : "https://api.anthropic.com/v1/messages";
 
 // ── Feature toggles ────────────────────────────────────────────
 // P17: These module-level constants are BOOT DEFAULTS only.
@@ -4315,7 +4322,7 @@ export default function HudsonPerryDriftV1() {
     const metaSysPrompt=META_ARCHITECT_KNOWLEDGE+"\n\n"+liveCtx;
     fetch(API_ENDPOINT,{method:"POST",
       headers:{"Content-Type":"application/json","anthropic-version":"2023-06-01",
-        "x-architect-provider":provider,"x-api-key":apiKey.trim()},
+        "x-api-key":apiKey.trim(),...(_isVercel?{"x-architect-provider":provider}:{})},
       body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:600,
         system:metaSysPrompt,
         messages:newMetaMsgs.map(m=>({role:m.role,content:m.content}))})})
@@ -4803,16 +4810,22 @@ export default function HudsonPerryDriftV1() {
       // V2.2: AutoTune
       let atParams={};
       if(autoTuneEnabled){
-        const uText=typeof userMessage==="string"?userMessage:JSON.stringify(userMessage);
+        const uText=typeof text==="string"?text:JSON.stringify(content);
         const atRes=computeAutoTuneParams(uText,apiMessages,feedbackState.learnedProfiles);
         atParams=atRes.params;setLastAutoTune({type:atRes.type,confidence:atRes.confidence,params:atRes.params});
       }
       const headers={
         "Content-Type":"application/json",
         "anthropic-version":"2023-06-01",
-        "x-architect-provider": provider,
       };
-      if (apiKey.trim()) headers["x-api-key"]=apiKey.trim();
+      if (_isVercel) {
+        // Proxy handles provider routing and key security
+        headers["x-architect-provider"] = provider;
+        if (apiKey.trim()) headers["x-api-key"] = apiKey.trim();
+      } else {
+        // Direct Anthropic API — standard auth header
+        if (apiKey.trim()) headers["x-api-key"] = apiKey.trim();
+      }
 
       const response=await fetch(API_ENDPOINT,{
         method:"POST",headers,
@@ -4821,7 +4834,7 @@ export default function HudsonPerryDriftV1() {
           max_tokens:maxTokens,
           system:systemPrompt,
           messages:apiMessages,
-          ...(autoTuneEnabled&&atParams.temperature!=null?{temperature:atParams.temperature,top_p:atParams.top_p}:{}),
+          ...(autoTuneEnabled&&atParams.temperature!=null?{temperature:atParams.temperature}:{}),
         }),
       });
 
@@ -4880,7 +4893,7 @@ export default function HudsonPerryDriftV1() {
             const memPrompt=buildMemoryPrompt(finalMessages,coherenceData,activePreset,assistantTurnCount);
             const mres=await fetch(API_ENDPOINT,{method:"POST",
               headers:{"Content-Type":"application/json","anthropic-version":"2023-06-01",
-                "x-architect-provider":provider,"x-api-key":apiKey.trim()},
+                "x-api-key":apiKey.trim(),...(_isVercel?{"x-architect-provider":provider}:{})},
               body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:500,
                 system:"You are a session memory compressor. Return only the compressed summary.",
                 messages:[{role:"user",content:memPrompt}]})});
@@ -5273,7 +5286,9 @@ export default function HudsonPerryDriftV1() {
      mathKalmanR,mathKalmanSigP,mathRagTopK,mathMaxTokens,
      sdeAlphaVal,sdeBetaVal,sdeSigmaVal,sdeAlphaOn,sdeBetaOn,sdeSigmaOn,mtjEnabled,mtjDelta,
      postAuditThresh,
-     livePaths,activeMutePhrases]);
+     livePaths,activeMutePhrases,
+     pinnedDocs,sessionMemory,domainAnchor,
+     autoTuneEnabled,feedbackState,provider]);
 
   const handleKey=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}};
 
@@ -5724,7 +5739,7 @@ export default function HudsonPerryDriftV1() {
               setReflexiveLoading(true);setReflexiveResult(null);
               try{
                 const res=await fetch(API_ENDPOINT,{method:"POST",
-                  headers:{"Content-Type":"application/json","anthropic-version":"2023-06-01","x-architect-provider":provider,"x-api-key":apiKey.trim()},
+                  headers:{"Content-Type":"application/json","anthropic-version":"2023-06-01","x-api-key":apiKey.trim(),...(_isVercel?{"x-architect-provider":provider}:{})},
                   body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:600,system:"Return only valid JSON. No markdown.",messages:[{role:"user",content:buildReflexivePrompt(coherenceData,activePreset)}]})});
                 const data=await res.json();
                 const raw=(data.content||[]).map(c=>c.text||"").join("");
